@@ -535,8 +535,8 @@ function sellFromRoom(i,n){
 // 行情表有對應行（同名、同品級、正常丹）嘅存貨，就喺行情表直接賣
 function inMarket(s){const inf=pillInfo(s.name);return!!inf&&s.grade>=1&&s.kind===inf.kind&&knownPills().includes(s.name);}
 function sellBtns(i,s){
-  const n=s?s.count:0;
-  return'<button class="btn" type="button" data-a="ss1" data-i="'+i+'"'+(n?' title="約 '+quoteN(s,1)+' 靈石"':' disabled')+'>賣1粒</button><button class="btn" type="button" data-a="ssa" data-i="'+i+'"'+(n?' title="約 '+quoteN(s,n)+' 靈石"':' disabled')+'>全賣'+(n?'×'+n:'')+'</button>';
+  if(!s||!s.count)return'';const n=s.count;
+  return'<button class="btn" type="button" data-a="ss1" data-i="'+i+'" title="約 '+quoteN(s,1)+' 靈石">賣1粒</button><button class="btn" type="button" data-a="ssa" data-i="'+i+'" title="約 '+quoteN(s,n)+' 靈石">全賣×'+n+'</button>';
 }
 function renderStock(){
   const st=DR().stacks;const rest=st.map((x,i)=>[x,i]).filter(([x])=>!inMarket(x));
