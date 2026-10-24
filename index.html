@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%}
   .ing .meta{font-size:9.5px}
   .dock{padding:6px 8px;gap:4px}
   .wx{flex:1 1 100%}
-  #dockBook,#dockCar,#dockRoom{display:none}
+  #dockBook,#dockCar,#dockRoom,#dockShop{display:none}
   .go{margin-left:auto}
   .rate b{font-size:19px}
   .hbtns{flex-wrap:wrap}
@@ -227,7 +227,22 @@ canvas{display:block;width:100%;height:100%}
 .mkt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 .mkt th{font-weight:400;color:var(--muted);text-align:left;font-size:12px;letter-spacing:.1em}
 .mkt th,.mkt td{padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
-.mkt .btn{padding:1px 8px}
+.mkt .btn{padding:1px 7px}
+.mkt .num{width:1%;text-align:right;padding-left:2px;padding-right:4px}
+.mkt .acts{width:1%;text-align:right}
+.mkt .acts .btn+.btn{margin-left:4px}
+.mkt th.acts{font-size:11px;letter-spacing:0}
+@media (max-width:860px){
+  .mkt{font-size:12px}
+  .mkt th,.mkt td{padding:4px 2px}
+  .mkt .btn{padding:1px 4px;font-size:12px}
+  .mkt .acts .btn+.btn{margin-left:2px}
+  .mkt .tag{padding:0 2px;font-size:10px}
+}
+@media (max-width:380px){
+  .mkt{font-size:11px}
+  .mkt .btn{padding:1px 3px;font-size:11px}
+}
 .btn.wrap{white-space:normal;text-align:left}
 .up{color:var(--jade)}.dn{color:var(--cinnabar)}
 .dlbtn{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:1px 8px;font-size:12.5px}
@@ -321,7 +336,7 @@ canvas{display:block;width:100%;height:100%}
       </div>
       <div class="inner-row" id="innerRow" aria-label="入室弟子"></div>
       <div class="dock">
-        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockRoom" type="button">丹室</button><button class="btn" id="dockCar" type="button">丹途</button><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
+        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockShop" type="button">商行</button><button class="btn" id="dockRoom" type="button">丹室</button><button class="btn" id="dockCar" type="button">丹途</button><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
         <div class="dock-row">
           <div class="wx"><span>五行</span><div class="wx-bar" id="wxBar"></div><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
           <span class="rate" id="rate" title="唔炸爐又煉得成丹嘅機會">成功率<b>—</b></span>
@@ -517,13 +532,19 @@ function sellFromRoom(i,n){
   persist();renderAll();
   const m=$('mMsg');if(m){m.textContent=lines.map(l=>l[0]).join(' ');m.className='desc'+(lines.some(l=>l[1]==='bad')?' bad':'');}
 }
+// 行情表有對應行（同名、同品級、正常丹）嘅存貨，就喺行情表直接賣
+function inMarket(s){const inf=pillInfo(s.name);return!!inf&&s.grade>=1&&s.kind===inf.kind&&knownPills().includes(s.name);}
+function sellBtns(i,s){
+  const n=s?s.count:0;
+  return'<button class="btn" type="button" data-a="ss1" data-i="'+i+'"'+(n?' title="約 '+quoteN(s,1)+' 靈石"':' disabled')+'>賣1粒</button><button class="btn" type="button" data-a="ssa" data-i="'+i+'"'+(n?' title="約 '+quoteN(s,n)+' 靈石"':' disabled')+'>全賣'+(n?'×'+n:'')+'</button>';
+}
 function renderStock(){
-  const st=DR().stacks;
-  let h='<div class="label" style="margin-top:8px">丹室存貨<em>'+roomCount()+' / '+roomCap()+' 粒</em></div>';
-  if(!st.length)return h+'<div class="desc">丹室冇存貨。出丹時撳「收入丹室」就可以喺度直接賣。</div>';
-  h+='<div class="tbl-wrap"><table class="mkt"><thead><tr><th>丹藥</th><th>品級</th><th>數量</th><th>每粒</th><th></th></tr></thead><tbody>';
-  st.forEach((x,i)=>{
-    h+='<tr><td>'+x.name+(isBlack(x)?' <span class="tag bad">黑市</span>':'')+'</td><td>'+x.gradeName+'</td><td>×'+x.count+'</td><td>'+sellValue(x)+'</td><td><button class="btn" type="button" data-a="ss1" data-i="'+i+'">賣一粒</button> <button class="btn" type="button" data-a="ssa" data-i="'+i+'">全部賣（約 '+quoteN(x,x.count)+'）</button></td></tr>';
+  const st=DR().stacks;const rest=st.map((x,i)=>[x,i]).filter(([x])=>!inMarket(x));
+  if(!rest.length)return'';
+  let h='<div class="label" style="margin-top:8px">其他存貨<em>失敗品、未識煉嘅丹</em></div>';
+  h+='<div class="tbl-wrap"><table class="mkt"><thead><tr><th>丹藥</th><th>品級</th><th>每粒</th><th></th></tr></thead><tbody>';
+  rest.forEach(([x,i])=>{
+    h+='<tr><td>'+x.name+(isBlack(x)?' <span class="tag bad">黑市</span>':'')+'</td><td>'+x.gradeName+'</td><td>'+sellValue(x)+'</td><td class="acts">'+sellBtns(i,x)+'</td></tr>';
   });
   return h+'</tbody></table></div>';
 }
@@ -664,18 +685,20 @@ function buyPill(name,g){
 }
 let shopGrade=2;
 function renderMarket(){
-  const g=shopGrade;const list=knownPills();
-  let h='<div class="label" style="align-items:center">丹藥行情<span class="chips">'+[1,2,3,4].map(k=>'<button class="chip" type="button" data-a="sg" data-g="'+k+'" aria-pressed="'+(g===k)+'">'+GRADES[k]+'</button>').join('')+'</span></div>';
+  const g=shopGrade;const list=knownPills();const st=DR().stacks;
+  const have=k=>st.filter(s=>s.grade===k&&inMarket(s)).reduce((a,s)=>a+s.count,0);
+  let h='<div class="label" style="align-items:center">丹藥行情<span class="chips">'+[1,2,3,4].map(k=>{const c=have(k);return'<button class="chip" type="button" data-a="sg" data-g="'+k+'" aria-pressed="'+(g===k)+'">'+GRADES[k]+(c?' '+c:'')+'</button>';}).join('')+'</span></div>';
   if(!list.length)return h+'<div class="desc">你未識煉任何丹，行情表空空如也。</div>';
-  h+='<div class="tbl-wrap"><table class="mkt"><thead><tr><th>丹藥</th><th>行情</th><th>收丹價</th><th>零售價</th><th></th></tr></thead><tbody>';
+  h+='<div class="tbl-wrap"><table class="mkt"><thead><tr><th>丹藥</th><th>行情</th><th class="num">收丹</th><th class="num">零售</th><th class="acts">丹室 '+roomCount()+'/'+roomCap()+'</th></tr></thead><tbody>';
   list.forEach(n=>{
     const inf=pillInfo(n);const x=pidx(n);const black=MO().on||inf.path==='mo'||inf.path==='du';
     const fake={name:n,grade:g,kind:inf.kind,path:inf.path};
     const sell=Math.max(1,Math.round(basePrice(fake)*satMult(n)));const ret=retailPrice(n,g);
     const tr=x.i>x.prev+.02?'<span class="up">▲</span>':x.i<x.prev-.02?'<span class="dn">▼</span>':'<span class="desc">－</span>';
-    h+='<tr><td>'+n+(black?' <span class="tag bad">黑市</span>':'')+'</td><td>'+tr+' '+Math.round(x.i*100)+'%</td><td>'+sell+(satMult(n)<.85?' <span class="desc">（壓價）</span>':'')+'</td><td>'+ret+'</td><td><button class="btn" type="button" data-a="bp" data-n="'+n+'"'+(P().stones<ret||roomCount()>=roomCap()?' disabled':'')+'>買</button></td></tr>';
+    const si=st.findIndex(s=>s.name===n&&s.grade===g&&s.kind===inf.kind);
+    h+='<tr><td>'+n+(black?' <span class="tag bad">黑市</span>':'')+'</td><td>'+tr+' '+Math.round(x.i*100)+'%</td><td class="num">'+sell+(satMult(n)<.85?'<span class="dn" title="市面太多，被壓價">↓</span>':'')+'</td><td class="num">'+ret+'</td><td class="acts"><button class="btn" type="button" data-a="bp" data-n="'+n+'"'+(P().stones<ret||roomCount()>=roomCap()?' disabled':'')+'>買</button>'+sellBtns(si,st[si])+'</td></tr>';
   });
-  h+='</tbody></table></div><p class="desc">收丹價＝你賣畀'+(MO().on?'黑市':'丹閣')+'嘅價錢（已計市場飽和）；零售價＝你買嘅價錢，買咗會放入丹室。行情每年上落。</p>';
+  h+='</tbody></table></div><p class="desc">收丹＝你賣畀'+(MO().on?'黑市':'丹閣')+'嘅每粒價錢（已計市場飽和，↓ 即係被壓價）；零售＝你買嘅價錢，買咗放入丹室。賣嘅係丹室入面同名同品級嘅存貨，品級掣上面個數係存貨量。行情每年上落。</p>';
   return h;
 }
 function renderGear(){
@@ -2159,7 +2182,7 @@ function renderAll(){
   renderRecipe();renderShelf();renderStats();renderInner();
   $('go').disabled=busy||!P().alive||!cfg.order.length;
   $('go').textContent=busy?'煉製中':'開爐';
-  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;$('grab').hidden=!MO().on;$('grab').disabled=busy||!P().alive;$('dockBook').disabled=busy;$('dockCar').disabled=busy;
+  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;$('grab').hidden=!MO().on;$('grab').disabled=busy||!P().alive;$('dockBook').disabled=busy;$('dockCar').disabled=busy;$('dockShop').disabled=busy;
   if(!$('modal').hidden)renderModal();
 }
 
@@ -2206,7 +2229,7 @@ $('mBody').addEventListener('click',e=>{
     if(P().stones<costOf()){toast('已配好「'+b.dataset.n+'」，但靈石唔夠開爐（要 '+costOf()+'）',3500);}else brew();}return;}
   if(mTab==='car')onCareerClick(e);else if(mTab==='book')onBookClick(e);else if(mTab==='shop'){onBookClick(e);onRoomClick(e);}else if(mTab==='room')onRoomClick(e);});
 function openTab(t){mTab=t;$('modal').hidden=false;$('mMsg').textContent='';renderModal();}
-$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('dockCar').onclick=()=>openTab('car');$('dockRoom').onclick=()=>openTab('room');$('mtRoom').onclick=()=>openTab('room');$('openShop').onclick=()=>openTab('shop');
+$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('dockCar').onclick=()=>openTab('car');$('dockRoom').onclick=()=>openTab('room');$('dockShop').onclick=()=>openTab('shop');$('mtRoom').onclick=()=>openTab('room');$('openShop').onclick=()=>openTab('shop');
 $('mtBook').onclick=()=>openTab('book');$('mtShop').onclick=()=>openTab('shop');
 function cheat(){
   const v=$('cheatIn').value.trim();$('cheatIn').value='';

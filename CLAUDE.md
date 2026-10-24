@@ -28,7 +28,7 @@
 | 左面板 | `#pRecipe` | 丹道 `#paths`、心法 `#arts`、火種 `#fires`、火候 `#heat`、丹爐 `#furns`。`.g1`／`.g2` 用嚟喺手機分兩個分頁 |
 | 中 | `#stage` | `<canvas id="cv">` 爐火動畫、`#log` 爐火紀錄、`#ov > #card` 疊層卡（出丹、結果、死亡、奇遇選擇） |
 | 中 | `#innerRow` | 三格：`[data-cell=dl]` 道侶、`[data-cell=inner]` 入室、`[data-cell=jm]` 記名 |
-| 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
+| 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
 | 大彈窗 | `#modal` | 分頁 `#mtBook #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
 | 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、記名管理 |
