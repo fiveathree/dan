@@ -94,6 +94,12 @@ canvas{display:block;width:100%;height:100%}
 .tag{font-size:11.5px;border:1px solid var(--line);border-radius:3px;padding:0 6px;color:var(--muted)}
 .tag.bad{border-color:#8a3a26;color:#f08a6c}.tag.good{border-color:#3f6e5b;color:var(--jade)}
 .actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pill-count{font-family:var(--display);font-size:22px;color:var(--bronze);margin-left:6px}
+.testers{display:flex;flex-direction:column;gap:4px}
+.tester{display:flex;flex-direction:column;align-items:flex-start;text-align:left;white-space:normal}
+.tester b{font-weight:600}
+.tester small{font-size:11.5px;color:var(--muted)}
+.more-row{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .act{border:1px solid var(--line);background:var(--panel2);border-radius:4px;padding:6px 4px;display:flex;flex-direction:column;align-items:center}
 .act b{font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
 .act small{font-size:10.5px;color:var(--muted)}
@@ -134,7 +140,8 @@ canvas{display:block;width:100%;height:100%}
   .stats{order:3;flex:1 1 100%;gap:2px 12px;font-size:11.5px}
   .realm{font-size:18px}
   .meter{width:40px}
-  .hbtns .btn{padding:3px 8px;font-size:12px}
+  .hbtns{gap:4px}
+  .hbtns .btn{padding:2px 6px;font-size:11.5px;letter-spacing:0}
   .overlay{position:fixed;z-index:25;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
   .order li{font-size:12px}
   .main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(110px,.7fr) auto auto minmax(0,1.5fr);gap:6px}
@@ -260,6 +267,7 @@ canvas{display:block;width:100%;height:100%}
         <div class="dock-row">
           <div class="wx"><span>五行</span><div class="wx-bar" id="wxBar"></div><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
           <span class="rate" id="rate" title="唔炸爐又煉得成丹嘅機會">成功率<b>—</b></span>
+          <span class="rate" id="yield" title="丹術每三階多一粒；助爐弟子丹術二階起多一粒，六階起多兩粒">出丹<b>×1</b></span>
           <span class="cost" id="cost"></span>
           <button class="go" id="go" type="button">開爐</button>
         </div>
@@ -896,9 +904,15 @@ function renderShelf(){
   $('wxBar').innerHTML=ELK.map(k=>'<i title="'+EL[k].n+' '+Math.round(a.el[k]/tot*100)+'%" style="width:'+(a.el[k]/tot*100)+'%;background:'+EL[k].c+'"></i>').join('');
   $('yyNeedle').style.left=clamp(50+a.yy*4,3,97)+'%';
   $('cost').innerHTML='開銷 <b>'+costOf()+'</b> / '+P().stones+' 石';
+  $('yield').innerHTML='出丹<b>×'+yieldCount()+'</b>';
   {const r=a.n?successRate(a):0;const el=$('rate');el.className='rate '+(!a.n?'':r>=80?'hi':r>=50?'mid':'lo');
    el.innerHTML='成功率<b>'+(a.n?r+'%':'—')+'</b>'+(team().wild?'<small>±</small>':'');
    el.title=a.n?'唔炸爐又煉得成丹嘅機會約 '+r+'%（火候偏差三級或以上必定出生丹／焦炭丹）'+(team().wild?'（好奇弟子助爐，會有變數）':''):'未放藥材';}
+}
+function yieldCount(){
+  const c=C();let n=1+Math.floor(c.skill/3);
+  c.members.filter(m=>m.role==='zhu').slice(0,2).forEach(m=>{n+=m.skill>=6?2:m.skill>=2?1:0;});
+  return n;
 }
 function successRate(a){
   // 唔炸爐 × 出到正常丹（唔係廢丹、生丹、焦炭丹）
@@ -1036,6 +1050,7 @@ function brew(){
   const c=costOf();if(P().stones<c){toast('靈石唔夠（要 '+c+'），撳「下山斬妖」賺返啲先');return;}
   {const u=bagSplit().used;const b=bag();Object.keys(u).forEach(k=>{b[k]-=u[k];if(b[k]<=0)delete b[k];});}
   P().stones-=c;P().age+=1;save.st.brews++;
+  if(current&&current.count>0){const v=sellValue(current)*current.count;P().stones+=v;save.st.earned+=v;toast('上一爐剩低嘅 '+current.count+' 粒'+current.name+'已經自動賣咗，得 '+v+' 靈石',3500);}
   busy=true;brewing=true;current=null;closeOverlay();$('log').innerHTML='';renderAll();
   const a=analyse();const F=FIRES[cfg.fire];
   const exploded=rnd()*100<a.boom;
@@ -1069,12 +1084,12 @@ function turnMsg(a,i,F){
   return pool[Math.floor(rnd()*pool.length)];
 }
 function finish(a,exploded){
-  brewing=false;
+  brewing=false;let phoenixDone=false;
   if(exploded){
     save.st.booms++;
     flash=1;const w=$('stage');w.classList.remove('shake');void w.offsetWidth;w.classList.add('shake');
     log('爆','轟！丹爐炸咗！','boom');
-    if(cfg.fire==='fenghuang'&&rnd()<.3){log('涅槃','鳳凰火捲住殘渣，重新凝成一粒丹','good');current=makePill(a,true);}
+    if(cfg.fire==='fenghuang'&&rnd()<.3){log('涅槃','鳳凰火捲住殘渣，重新凝成一粒丹','good');current=makePill(a,true);phoenixDone=true;}
     else{
       if(bookFx().safe)log('避火咒','金光一閃，你毫髮無損','good');
       else{const hurt=Math.round(5+rnd()*10);P().cult=Math.max(0,P().cult-hurt);P().tox=clamp(P().tox+5,0,200);
@@ -1083,7 +1098,8 @@ function finish(a,exploded){
       busy=false;afterAction();return;
     }
   }else current=makePill(a,false);
-  log('開爐','得到：'+current.name+'（'+current.gradeName+'）','good');
+  current.count=phoenixDone?1:yieldCount();
+  log('開爐','得到：'+current.name+'（'+current.gradeName+'）×'+current.count,'good');
   save.st.maxG=Math.max(save.st.maxG,current.grade);
   if(!save.codex.includes(current.name)){save.codex.push(current.name);toast('丹譜新增：'+current.name);}
   recordBrew(current).forEach(m=>log('丹書',m,'good'));
@@ -1122,15 +1138,25 @@ function showPill(){
   const glowCss=p.grade>=3?'box-shadow:0 0 '+(p.grade*7)+'px '+p.elHex+';':'';
   openOverlay(
     '<div class="pill-head"><div class="pill-orb" style="background:radial-gradient(circle at 35% 30%,#fff8,'+p.elHex+' 45%,#0008);'+glowCss+'"></div>'+
-    '<div><div class="pill-grade">'+p.gradeName+(DANWEN[p.grade]?' · '+CN[DANWEN[p.grade]]+'紋':'')+' · '+PATHS[p.path].n+'</div><div class="pill-name">'+p.name+'</div></div></div>'+
+    '<div><div class="pill-grade">'+p.gradeName+(DANWEN[p.grade]?' · '+CN[DANWEN[p.grade]]+'紋':'')+' · '+PATHS[p.path].n+'</div><div class="pill-name">'+p.name+(p.count>1?'<span class="pill-count">×'+p.count+'</span>':'')+'</div></div></div>'+
     '<p>'+p.desc+'</p><div class="pill-props">'+tags.map(([c,t])=>'<span class="tag '+c+'">'+t+'</span>').join('')+'</div>'+
-    '<div class="actions"><button class="act eat" type="button" id="aEat"><b>食</b><small>一啖吞落肚</small></button><button class="act" type="button" id="aTest"><b>試藥</b><small>搵師弟食先</small></button><button class="act" type="button" id="aSell"><b>賣</b><small>值 '+sellValue(p)+' 靈石</small></button></div>'
+    '<div class="actions"><button class="act eat" type="button" id="aEat"><b>食</b><small>一啖吞落肚</small></button><button class="act" type="button" id="aTest"><b>試藥</b><small>搵師弟食先</small></button><button class="act" type="button" id="aSell"><b>賣</b><small>每粒 '+sellValue(p)+' 靈石</small></button></div>'+
+    (p.count>1?'<div class="more-row"><button class="btn" type="button" id="aSellAll">全部 '+p.count+' 粒賣晒（'+sellValue(p)*p.count+' 靈石）</button></div>':'')
   );
+  if($('aSellAll'))$('aSellAll').onclick=sellAll;
   $('aEat').onclick=eat;$('aTest').onclick=test;$('aSell').onclick=sell;
 }
 function showOutcome(title,lines,fx){
-  openOverlay('<div class="pill-grade">'+title+'</div><div class="outcome">'+lines.map(([t,c])=>'<p'+(c?' class="'+c+'"':'')+'>'+t+'</p>').join('')+(fx?'<p class="fx">'+fx+'</p>':'')+'</div><button class="btn close" type="button" id="aClose">返去丹爐</button>');
-  $('aClose').onclick=closeOverlay;
+  const left=current&&current.count>0;
+  openOverlay('<div class="pill-grade">'+title+'</div><div class="outcome">'+lines.map(([t,c])=>'<p'+(c?' class="'+c+'"':'')+'>'+t+'</p>').join('')+(fx?'<p class="fx">'+fx+'</p>':'')+'</div>'+
+    (left?'<button class="btn close" type="button" id="aMore">處理剩低 '+current.count+' 粒'+current.name+'</button>':'<button class="btn close" type="button" id="aClose">返去丹爐</button>'));
+  if(left)$('aMore').onclick=showPill;else $('aClose').onclick=closeOverlay;
+}
+function useOne(){if(!current)return;current.count=(current.count||1)-1;if(current.count<=0)current=null;}
+function sellAll(){
+  const p=current;if(!p)return;const n=p.count||1;const v=sellValue(p)*n;P().stones+=v;save.st.earned+=v;current=null;
+  showOutcome('賣丹',[[(p.path==='mo'||p.path==='du'?'黑市':'丹閣')+'掌櫃收晒你 '+n+' 粒'+p.name+'，畀咗 '+v+' 靈石。']],'');
+  afterAction();
 }
 function sellValue(p){let v=[1,30,90,250,700,2000][p.grade];if(p.path==='mo'||p.path==='du')v*=1.3;if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;const c=C();if(c.aff==='xie')v*=1.1;if(c.aff==='own'&&c.lvl>=2)v*=1.2;return Math.round(v);}
 
@@ -1156,9 +1182,9 @@ const GOOD_EAT={mo:'一股暴戾嘅力量湧入丹田，你忍唔住笑咗出聲
 function eat(){
   const p=current;if(!p||!P().alive)return;
   const pl=P();const e=effects(p,pl.realm);
-  save.st.eats++;current=null;
+  save.st.eats++;useOne();
   if(e.risk&&rnd()*100<e.risk){
-    checkAch();
+    current=null;checkAch();
     endLife('爆體而亡','你食咗一粒'+p.gradeName+'嘅'+p.name+'，以'+REALMS[pl.realm]+'期嘅身體承受唔住，「嘭」一聲化成一團血霧。');
     return;
   }
@@ -1181,23 +1207,46 @@ function eat(){
 }
 function test(){
   const p=current;if(!p)return;
-  const e=effects(p,0);const mine=effects(p,P().realm);
+  const mem=C().members;
+  if(!mem.length){testBy(0);return;}
+  const rows=mem.map(m=>{const e=effects(p,m.realm);return'<button class="btn tester" type="button" data-id="'+m.id+'"><b>'+m.name+'</b><small>'+juniorWord(m)+' · '+REALMS[m.realm]+' · '+PERS[m.pers].n+' · 爆體風險 '+e.risk+'%</small></button>';}).join('');
+  const e0=effects(p,0);
+  openOverlay('<div class="pill-grade">搵邊個試'+p.name+'？</div><div class="testers">'+rows+
+    '<button class="btn tester" type="button" data-id="0"><b>無名外門師弟</b><small>煉氣 · 爆體風險 '+e0.risk+'%</small></button></div>'+
+    '<button class="btn close" type="button" id="aBack">返轉頭</button>');
+  $('card').querySelectorAll('.tester').forEach(b=>b.onclick=()=>testBy(+b.dataset.id));
+  $('aBack').onclick=showPill;
+}
+function testBy(mid){
+  const p=current;if(!p)return;
+  const c=C();const m=mid?c.members.find(x=>x.id===mid):null;
+  const who=m?m.name:'外門師弟';
+  const e=effects(p,m?m.realm:0);const mine=effects(p,P().realm);
   const lines=[];
-  if(e.risk&&rnd()*100<e.risk){save.shidi++;lines.push(['師弟一食落去，七孔噴出彩虹色嘅光，當場仙逝。（第 '+save.shidi+' 位師弟）','bad']);}
-  else if(p.kind==='chicken')lines.push(['師弟話：「師兄，呢個咪雞湯囉。」']);
-  else if(p.kind==='waste'||p.kind==='burnt')lines.push(['師弟成晚瀉，第二朝話要轉門派。']);
-  else if(p.kind==='meng')lines.push(['師弟問你：「你係邊位？」']);
-  else if(p.path==='mo')lines.push(['師弟雙眼發紅，追住隻雞斬咗成個時辰。']);
-  else if(p.path==='du')lines.push([e.tox>20?'師弟塊面轉晒綠色，但人仲喺度。':'師弟話有少少麻，冇乜事。']);
-  else lines.push([e.cult>30?'師弟成個人發光，即場突破！佢多謝你。':'師弟話：「似乎有啲效，又似乎冇。」']);
-  lines.push(['你根據師弟反應推算，如果自己食：']);
-  current=null;
-  showOutcome('師弟試藥',lines,'修為 '+sign(mine.cult)+'%　毒素 '+sign(mine.tox)+'　心魔 '+sign(mine.demon)+'　爆體風險 '+mine.risk+'%');
+  if(e.risk&&rnd()*100<e.risk){
+    save.shidi++;
+    lines.push([who+'一食落去，七孔噴出彩虹色嘅光，當場仙逝。（已故師弟妹第 '+save.shidi+' 位）','bad']);
+    if(m){c.members=c.members.filter(x=>x.id!==m.id);lines.push(['你失去咗'+(m.role!=='idle'?'負責'+ROLES[m.role].n+'嘅':'')+juniorWord(m)+m.name+'。','bad']);}
+  }
+  else if(p.kind==='chicken')lines.push([who+'話：「呢個咪雞湯囉。」']);
+  else if(p.kind==='waste'||p.kind==='burnt')lines.push([who+'成晚瀉，第二朝話要轉門派。']);
+  else if(p.kind==='meng')lines.push([who+'問你：「你係邊位？」']);
+  else if(p.path==='mo')lines.push([who+'雙眼發紅，追住隻雞斬咗成個時辰。']);
+  else if(p.path==='du')lines.push([e.tox>20?who+'塊面轉晒綠色，但人仲喺度。':who+'話有少少麻，冇乜事。']);
+  else if(e.cult>30){
+    lines.push([who+'成個人發光，即場突破！','good']);
+    if(m&&m.realm<5){m.realm++;m.xp+=4;lines.push([m.name+'突破到「'+REALMS[m.realm]+'」，對你感激不盡。','good']);}
+  }
+  else lines.push([who+'話：「似乎有啲效，又似乎冇。」']);
+  if(m&&c.members.includes(m)&&m.pers==='tan'&&rnd()<.3)lines.push([m.name+'食完仲問你：「'+(c.aff==='own'?'師父':'師兄')+'，呢粒可唔可以報銷？」']);
+  lines.push(['你根據'+who+'嘅反應推算，如果自己食：']);
+  useOne();
+  showOutcome(who+'試藥',lines,'修為 '+sign(mine.cult)+'%　毒素 '+sign(mine.tox)+'　心魔 '+sign(mine.demon)+'　爆體風險 '+mine.risk+'%');
   afterAction();
 }
 function sell(){
   const p=current;if(!p)return;const v=sellValue(p);P().stones+=v;save.st.earned+=v;
-  current=null;
+  useOne();
   showOutcome('賣丹',[[(p.path==='mo'||p.path==='du'?'黑市':'丹閣')+'掌櫃收咗你粒'+p.name+'，畀咗 '+v+' 靈石。']],'');
   afterAction();
 }
