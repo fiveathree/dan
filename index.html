@@ -219,6 +219,9 @@ canvas{display:block;width:100%;height:100%}
 .mem-h .ib{margin-left:auto}
 .mem .chip{padding:1px 6px;font-size:12px}
 .team-sum{color:var(--jade)}
+.dlbtn{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:1px 8px;font-size:12.5px}
+.dlbtn:hover{border-color:var(--cinnabar)}
+.heart{color:var(--cinnabar);font-variant-numeric:tabular-nums}
 .lives{display:flex;flex-direction:column;gap:8px}
 .life{border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--panel2);display:flex;flex-direction:column;gap:5px}
 .life.cur{border-color:var(--jade)}
@@ -471,6 +474,10 @@ const ACHS=[
   {id:'reform',n:'回頭是岸',d:'成為魔頭之後放下屠刀',c:s=>(s.st.reform||0)>=1,u:[]},
   {id:'draw1',n:'開門收徒',d:'第一次收徒抽籤',c:s=>(s.st.draws||0)>=1,u:[]},
   {id:'tianzong',n:'天縱奇才',d:'收到天縱資質嘅入室弟子',c:s=>(s.st.bestApt||0)>=4,u:[]},
+  {id:'adv10',n:'奇遇連連',d:'經歷十次奇遇',c:s=>(s.st.adv||0)>=10,u:[]},
+  {id:'survive',n:'大難不死',d:'喺墮崖或者天劫中執返條命',c:s=>(s.st.survive||0)>=1,u:[]},
+  {id:'dl',n:'神仙眷侶',d:'結識道侶',c:s=>(s.st.dl||0)>=1,u:[]},
+  {id:'dlmo',n:'仙魔之戀',d:'同女魔頭結為道侶',c:s=>(s.st.dlMo||0)>=1,u:[]},
   {id:'fly',n:'白日飛升',d:'飛升仙界',c:s=>s.st.flew>=1,u:[]}
 ];
 function labelOf(key){const [t,id]=key.split(':');return TYPE_DATA[t][id].n;}
@@ -484,6 +491,157 @@ try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.
 {const OLDG=[0,1,2,3,3,4];if(save.gver!==2){if(save.st.maxG)save.st.maxG=OLDG[save.st.maxG]||0;if(save.recipes)Object.values(save.recipes).forEach(e=>{e.g=OLDG[e.g]!==undefined?OLDG[e.g]:e.g;});save.gver=2;}}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
+
+/* ---------- 道侶 ---------- */
+const DL_KIND={
+  mo:{n:'女魔頭',d:'助爐時丹品 +6；每年心魔 +2',names:['紅綃','玉蘿','冷霜','紫鳶','夜蓉','血蓮']},
+  zheng:{n:'仙子',d:'助爐時丹爐穩定 +6；每年心魔 −2',names:['清歌','若雪','雲舒','白鷺','月華','素心']},
+  xia:{n:'俠客',d:'助爐時丹爐穩定 +6；每年心魔 −2',names:['長風','子衿','行雲','驚鴻','少白','無涯']}
+};
+function DL(){return P().dl||null;}
+function makeDL(kind){
+  const K=DL_KIND[kind];const pl=P();
+  return{name:SURN[Math.floor(rnd()*SURN.length)]+K.names[Math.floor(rnd()*K.names.length)],kind,realm:clamp(pl.realm+Math.floor(rnd()*3)-1,0,5),
+    pers:Object.keys(PERS)[Math.floor(rnd()*6)],aff:40+Math.floor(rnd()*30),age:pl.age+Math.floor(rnd()*20)-8,since:pl.age};
+}
+function dlEffects(t){const d=DL();if(!d||d.aff<50)return;if(d.kind==='mo')t.q+=6;else t.stab+=6;t.helpers.push('道侶'+d.name);}
+function takeDL(d,how){
+  P().dl=d;save.st.dl=(save.st.dl||0)+1;if(d.kind==='mo')save.st.dlMo=1;
+  bio(how+'，同'+DL_KIND[d.kind].n+d.name+'結為道侶');
+}
+function dlTick(msgs){
+  const d=DL();if(!d)return;const pl=P();
+  d.age++;d.aff=clamp(d.aff-1,0,100);
+  pl.cult+=d.aff>=50?3:1;
+  pl.demon=clamp(pl.demon+(d.kind==='mo'?2:-2),0,200);
+  if(d.age>=LIFE[d.realm]+30){msgs.push('道侶'+d.name+'壽元已盡，喺你懷中離世');bio('道侶'+d.name+'離世');pl.dl=null;return;}
+  if(d.aff<20&&rnd()<.25){msgs.push('道侶'+d.name+'話你心入面只有丹爐，留低一封信就走咗');bio('道侶'+d.name+'離你而去');pl.dl=null;}
+}
+function showDL(){
+  const d=DL();if(!d)return;const K=DL_KIND[d.kind];
+  pop('<div class="dz-head" style="--apt:'+(d.kind==='mo'?'var(--cinnabar)':'var(--jade)')+'"><span class="dz-av big">'+d.name[0]+'</span><div><div class="pill-grade">道侶 · '+K.n+'</div><div class="pill-name">'+d.name+'</div></div></div>'+
+    '<dl class="dz-info"><dt>好感</dt><dd><span class="meter wide"><i style="width:'+d.aff+'%;background:var(--cinnabar)"></i></span> '+Math.round(d.aff)+'　'+(d.aff>=80?'情深似海':d.aff>=50?'兩情相悅':d.aff>=20?'有啲冷淡':'貌合神離')+'</dd>'+
+    '<dt>境界</dt><dd>'+REALMS[d.realm]+'期</dd><dt>性格</dt><dd>'+PERS[d.pers].n+'</dd><dt>年歲</dt><dd>'+d.age+' 歲</dd>'+
+    '<dt>相識</dt><dd>你 '+d.since+' 歲嗰年</dd><dt>好處</dt><dd>每年一齊修煉，修為自動 +'+(d.aff>=50?3:1)+'%；好感 50 以上：'+K.d+'</dd></dl>'+
+    '<p class="desc">好感每年自然跌 1；低過 20 有機會離你而去。送丹（出丹時撳「送畀道侶」）、送禮、雙修都可以加好感。</p>'+
+    '<div class="draw-acts"><button class="btn" type="button" data-a="dlsx">雙修一年</button><button class="btn" type="button" data-a="dlgift"'+(P().stones<200?' disabled':'')+'>送禮（200 靈石）</button><button class="btn danger" type="button" data-a="dlbye">分手</button></div><div class="desc" id="popMsg"></div>');
+}
+function dlAction(a,b){
+  const d=DL();if(!d)return;const pl=P();
+  if(a==='dlsx'){
+    pl.age+=1;const g=6+d.realm*3;pl.cult+=g;d.aff=clamp(d.aff+5,0,100);if(d.kind==='mo')pl.demon=clamp(pl.demon+4,0,200);
+    while(pl.cult>=100&&pl.realm<6){pl.cult-=100;pl.realm++;}
+    save.st.maxRealm=Math.max(save.st.maxRealm,pl.realm);
+    afterAction();if(!pl.alive){closePop();return;}showDL();$('popMsg').textContent='同'+d.name+'閉關雙修一年，修為 +'+g+'%，好感 +5'+(d.kind==='mo'?'，心魔 +4':'')+'。';
+  }else if(a==='dlgift'){
+    if(pl.stones<200)return;pl.stones-=200;d.aff=clamp(d.aff+8,0,100);afterAction();showDL();$('popMsg').textContent=d.name+'收到禮物，笑咗一笑。好感 +8';
+  }else if(a==='dlbye'){
+    if(!b.dataset.armed){b.dataset.armed='1';b.textContent='再撳一次確認分手';return;}
+    pl.dl=null;bio('同道侶'+d.name+'分手');
+    let t='你同'+d.name+'分開咗。';
+    if(d.kind==='mo'&&rnd()<.3){pl.cult=Math.max(0,pl.cult-10);t+='佢臨走前一掌打埋嚟，修為 −10%。';}
+    closePop();afterAction();toast(t,4000);
+  }
+}
+function giftPill(){
+  const p=current;const d=DL();if(!p||!d)return;
+  const add=FAIL_KINDS.includes(p.kind)?-3:5+p.grade*5;d.aff=clamp(d.aff+add,0,100);useOne();
+  showOutcome('送丹',[[add>0?d.name+'收下'+p.name+'，眼角帶笑。好感 +'+add:d.name+'望住粒'+p.name+'，面色一沉。好感 '+add,add>0?'good':'bad']],'');
+  afterAction();
+}
+
+/* ---------- 奇遇 ---------- */
+function gainCult(n){const pl=P();pl.cult=Math.max(0,pl.cult+n);while(pl.cult>=100&&pl.realm<6){pl.cult-=100;pl.realm++;}save.st.maxRealm=Math.max(save.st.maxRealm,pl.realm);}
+function rareBook(){const pool=Object.keys(BOOKS).filter(id=>(BOOKS[id].src.includes('yao')||BOOKS[id].src.includes('shop'))&&!hasBook(id));if(!pool.length)return null;const id=pool[Math.floor(rnd()*pool.length)];gainBook(id);return id;}
+function rareHerb(){const pool=Object.keys(ING).filter(id=>isUnl('ing',id)&&ING[id].p>=90);if(!pool.length)return null;const id=pool[Math.floor(rnd()*pool.length)];const b=bag();b[id]=(b[id]||0)+1+Math.floor(rnd()*2);return id;}
+function dlOffer(d,how){
+  const cur=DL();
+  if(cur)return{lines:[['你心中只有'+cur.name+'，婉拒咗'+d.name+'嘅心意。']]};
+  return{lines:[[d.name+'（'+DL_KIND[d.kind].n+'，'+REALMS[d.realm]+'期）望住你，問你願唔願意同佢結為道侶。']],
+    choice:{q:'結唔結為道侶？',opts:[
+      {t:'結為道侶',f:()=>{if(rnd()*100<d.aff+20){takeDL(d,how);return{lines:[['你同'+d.name+'對天立誓，結為道侶。從此雙修共進。','good']]};}return{lines:[[d.name+'笑笑話：「做住朋友先啦。」之後飄然而去。']]};}},
+      {t:'婉拒',f:()=>({lines:[['你婉拒咗，'+d.name+'點一點頭，轉身離開。']]})}]}};
+}
+const ADV=[
+  {w:6,ctx:'both',run:L=>{const u=Math.round(4+rnd()*7);gainCult(u);L.push(['喺山洞發現一眼靈泉，浸咗一晚。修為 +'+u+'%','good']);}},
+  {w:5,ctx:'both',run:L=>{const v=40+Math.floor(rnd()*90);P().stones+=v;L.push(['喺樹下執到個前人遺下嘅錢袋，有 '+v+' 靈石。','good']);}},
+  {w:4,ctx:'herb',run:L=>{P().tox=clamp(P().tox+6,0,200);L.push(['好奇試食咗粒野果，屙咗成晚。毒素 +6','bad']);}},
+  {w:6,ctx:'both',run:L=>{const d=Math.round(5+rnd()*8);gainCult(-d);L.push(['半路撞到隻妖獸偷襲，打到甩頭甩髻先走得甩。修為 −'+d+'%','bad']);}},
+  {w:4,ctx:'both',run:L=>{C().sxp+=25;L.push(['坐喺瀑布前面睇咗成日水，忽然對火候有新體會。丹術經驗 +25','good']);}},
+  {w:5,ctx:'herb',run:L=>{const id=rareHerb();if(id)L.push(['喺懸崖邊發現一叢'+ING[id].n+'，小心翼翼採咗落嚟，放入藥囊。','good']);else L.push(['懸崖邊有啲靈藥，但你一樣都唔識。']);}},
+  {w:2,ctx:'both',run:L=>{const id=rareBook();if(id){L.push(['喺一具古修遺骸身上，搵到一本《'+BOOKS[id].n+'》。','good']);}else{P().stones+=300;L.push(['古修遺骸身上有個儲物袋，入面有 300 靈石。','good']);}}},
+  {w:1.2,ctx:'both',danger:1,run:L=>{
+    if(rnd()<.7){gainCult(-20);P().tox=clamp(P().tox+5,0,200);save.st.survive=(save.st.survive||0)+1;L.push(['你一腳踩空，跌落萬丈懸崖！好彩被樹枝勾住，執返條命，但斷咗幾條骨。修為 −20%','bad']);bio('墮崖重傷，大難不死');}
+    else{L.push(['你一腳踩空，跌落萬丈懸崖……','bad']);return{death:['墮崖身亡','你上山途中失足，跌落萬丈懸崖，屍骨無存。']};}}},
+  {w:.8,ctx:'yao',danger:1,run:L=>{
+    const r=rnd();
+    if(r<.5){gainCult(15);save.st.survive=(save.st.survive||0)+1;L.push(['你誤闖高人渡劫現場，被天雷餘波劈中，竟然借雷淬體！修為 +15%','good']);}
+    else if(r<.85){gainCult(-25);L.push(['你誤闖高人渡劫現場，被天雷餘波劈到成身焦。修為 −25%','bad']);}
+    else{L.push(['你誤闖高人渡劫現場，一道天雷直劈落嚟……','bad']);return{death:['天雷殛斃','你誤闖別人嘅渡劫現場，被天雷劈成焦炭。']};}}},
+  {w:3,ctx:'both',run:L=>{
+    L.push(['山谷入面躺住個重傷嘅女魔頭，身上魔氣翻騰。佢望住你，有氣冇力咁講：「救……我……」']);
+    return{choice:{q:'救唔救佢？',opts:[
+      {t:'救佢',f:()=>{const r=rnd();
+        if(r<.45){const d=makeDL('mo');d.aff=70+Math.floor(rnd()*20);return dlOffer(d,'救咗重傷嘅女魔頭');}
+        if(r<.75){const id=hasBook('xf_tianmo')?null:(gainBook('xf_tianmo')&&'xf_tianmo');if(id)return{lines:[['女魔頭傷好之後留低一本《天魔噬心訣殘本》報恩，然後消失喺霧中。','good']]};P().stones+=500;return{lines:[['女魔頭傷好之後留低一個儲物袋，入面有 500 靈石。','good']]};}
+        const lost=Math.round(P().stones*.3);P().stones-=lost;gainCult(-15);bio('救咗女魔頭，反被佢吸走修為');return{lines:[['女魔頭一傷好就反咬你一口，吸走你修為，仲順手拎走 '+lost+' 靈石。修為 −15%','bad']]};}},
+      {t:'唔理佢',f:()=>({lines:[['你當睇唔到，行咗去。身後傳嚟一聲冷笑。']]})},
+      {t:'補刀搜身',f:()=>{P().stones+=300;P().demon=clamp(P().demon+12,0,200);bio('補刀殺咗重傷嘅女魔頭');return{lines:[['你一劍落去，喺佢身上搜到 300 靈石。心魔 +12','bad']]};}}]}};}},
+  {w:3,ctx:'herb',run:L=>{
+    L.push(['草叢入面有隻受傷嘅白色靈狐，後腳夾住喺獵人陷阱度。']);
+    return{choice:{q:'點處理？',opts:[
+      {t:'救佢',f:()=>{if(rnd()<.5){P().lifeBonus+=20;bio('救咗靈狐，得佢報恩');return{lines:[['靈狐叼咗一粒朱果畀你報恩。你食落去，壽元 +20 年。','good']]};}return{lines:[['靈狐望咗你一眼，一閃就唔見咗。']]};}},
+      {t:'剝皮賣錢',f:()=>{P().stones+=80;P().demon=clamp(P().demon+5,0,200);return{lines:[['狐皮賣咗 80 靈石。夜晚發夢見到隻狐狸望住你。心魔 +5','bad']]};}},
+      {t:'行開',f:()=>({lines:[['你繼續上山。']]})}]}};}},
+  {w:3,ctx:'both',run:L=>{
+    L.push(['路邊有個衣衫襤褸嘅老散修，伸手問你借 100 靈石買碗粥。']);
+    return{choice:{q:'畀唔畀？',opts:[
+      {t:'畀 100 靈石',dis:()=>P().stones<100,f:()=>{P().stones-=100;if(rnd()<.35){C().sxp+=60;const id=rareBook();bio('施捨老散修，原來係隱世高人');return{lines:[['老散修哈哈大笑，原來係隱世高人！佢指點你一晚，丹術經驗 +60'+(id?'，仲送你一本《'+BOOKS[id].n+'》':'')+'。','good']]};}return{lines:[['老散修多謝你，拎住錢去買粥。']]};}},
+      {t:'唔畀',f:()=>({lines:[['老散修搖搖頭，喃喃自語：「世風日下……」']]})}]}};}},
+  {w:2,ctx:'both',run:L=>{
+    L.push(['山壁上有個若隱若現嘅洞府入口，門口刻住「擅入者死」。']);
+    return{choice:{q:'入唔入？',opts:[
+      {t:'入去',f:()=>{const r=rnd();
+        if(r<.5){const id=rareBook();const h=rareHerb();P().stones+=200;return{lines:[['洞府入面係古修遺藏！'+(id?'得到《'+BOOKS[id].n+'》，':'')+(h?'仲有'+ING[h].n+'，':'')+'同 200 靈石。','good']]};}
+        if(r<.88){gainCult(-15);return{lines:[['一入去就觸動機關，萬箭齊發，你中咗幾箭先逃得出嚟。修為 −15%','bad']]};}
+        return{lines:[['洞府入面陰風陣陣……'],],death:['命喪古洞','你闖入古修洞府，觸動上古禁制，化為飛灰。']};}},
+      {t:'唔好入',f:()=>({lines:[['你覺得「擅入者死」幾個字好有說服力，掉頭走咗。']]})}]}};}},
+  {w:3,ctx:'yao',run:L=>{
+    const sk=C().skill;const p=clamp(.35+sk*.06,.35,.95);
+    L.push(['斬完妖，撞到另一個煉丹師，佢話要同你比試煉丹，輸咗嘅賠 150 靈石。']);
+    return{choice:{q:'應唔應戰？（你嘅勝算約 '+Math.round(p*100)+'%）',opts:[
+      {t:'應戰',f:()=>{if(rnd()<p){P().stones+=200;bio('同路過煉丹師比試，贏咗');return{lines:[['你嘅丹香先飄出嚟，對方心服口服，畀咗你 200 靈石。','good']]};}const l=Math.min(150,P().stones);P().stones-=l;return{lines:[['對方技高一籌，你輸咗 '+l+' 靈石。','bad']]};}},
+      {t:'拒絕',f:()=>({lines:[['你話今日唔得閒，對方笑你係縮頭烏龜。']]})}]}};}},
+  {w:2,ctx:'both',run:L=>{
+    const kind=rnd()<.5?'zheng':'xia';const d=makeDL(kind);
+    L.push(['溪邊遇到一位'+(kind==='zheng'?'正在採藥嘅仙子':'正在練劍嘅俠客')+'，'+d.name+'。你哋傾咗成晚，好投契。']);
+    return dlOffer(d,'溪邊邂逅');}}
+];
+function rollAdv(ctx){
+  const pool=ADV.filter(e=>e.ctx==='both'||e.ctx===ctx);const tot=pool.reduce((a,e)=>a+e.w,0);
+  let r=rnd()*tot;for(const e of pool){if(r<e.w)return e;r-=e.w;}return pool[0];
+}
+function adventure(ctx,lines){
+  if(rnd()>(ctx==='herb'?.55:.5))return null;
+  save.st.adv=(save.st.adv||0)+1;
+  const e=rollAdv(ctx);const res=e.run(lines)||null;
+  return res;
+}
+function resolveAdv(title,lines,res){
+  if(res&&res.death){afterAction();if(P().alive)endLife(res.death[0],res.death[1]);return;}
+  if(res&&res.lines)lines=lines.concat(res.lines);
+  if(res&&res.choice){
+    const ch=res.choice;
+    openOverlay('<div class="pill-grade">'+title+' · 奇遇</div><div class="outcome">'+lines.map(([t,c])=>'<p'+(c?' class="'+c+'"':'')+'>'+t+'</p>').join('')+'</div><div class="pill-grade">'+ch.q+'</div><div class="draw-acts">'+
+      ch.opts.map((o,i)=>'<button class="btn" type="button" data-i="'+i+'"'+(o.dis&&o.dis()?' disabled':'')+'>'+o.t+'</button>').join('')+'</div>');
+    $('card').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const r=ch.opts[+b.dataset.i].f()||{};resolveAdv(title,[],r);});
+    persist();renderAll();
+    return;
+  }
+  showOutcome(title,lines,'');
+  afterAction();
+}
+
 
 /* ---------- 忠誠度、升降 ---------- */
 function isInner(m){return inner().includes(m);}
@@ -640,7 +798,7 @@ function yearTick(){
       if(d.realm>=5)d.cult=Math.min(d.cult,100);
       if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;LN().oldAge++;bio('入室弟子'+d.name+'壽終坐化');msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
-    loyTick(msgs);
+    loyTick(msgs);dlTick(msgs);
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
       if(rnd()*100<ch){const m=genCand();m.cost=0;c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做普通弟子');}
@@ -711,6 +869,7 @@ function onPopClick(e){
   else if(a==='takeNormal'){const d=pendingDraw;if(!d)return;const c=C();if(c.members.length>=capOf())return;c.members.push({id:d.id,name:d.name,f:d.f,pers:d.pers,skill:d.skill,xp:0,realm:d.realm,role:'idle',cost:0});pendingDraw=null;closePop();afterAction();toast(d.name+'做咗普通弟子');}
   else if(a==='decline'){closePop();}
   else if(a==='irole'){const d=inner().find(x=>x.id===+b.dataset.id);if(d){d.role=b.dataset.r;persist();renderAll();showDisciple(d.id);}}
+  else if(a==='dlsx'||a==='dlgift'||a==='dlbye')dlAction(a,b);
   else if(a==='demote'){const id=+b.dataset.id;const d=inner().find(x=>x.id===id);if(demote(id)){closePop();toast(d.name+'被降為普通弟子，佢好唔開心');}}
   else if(a==='swap'){const m=promote(+b.dataset.id,+b.dataset.sw);closePop();if(m)toast(m.name+'升為入室弟子');}
   else if(a==='expel'){
@@ -1036,7 +1195,7 @@ function team(){
     if(m.role==='ying')t.inc+=(10+m.skill*6)*(p.inc||1)*L;
     if(m.role==='chuan')t.pres+=m.skill*3*L;
   });
-  moTeam(t);innerEffects(t);
+  moTeam(t);innerEffects(t);dlEffects(t);
   if(c.aff==='xie')t.disc+=10;
   if(c.aff==='sect'){if(c.sect==='baicao')t.disc+=12;if(c.sect==='qingyun')t.stab+=6;if(c.sect==='chixiao')t.q+=6;t.inc+=30;}
   if(c.aff==='own'){const L=SECT_LV[c.lvl];t.disc+=L.disc;t.stab+=L.stab;t.inc+=L.inc;}
@@ -1509,9 +1668,10 @@ function showPill(){
     '<div><div class="pill-grade">'+p.gradeName+(DANWEN[p.grade]?' · '+CN[DANWEN[p.grade]]+'紋':'')+' · '+PATHS[p.path].n+'</div><div class="pill-name">'+p.name+(p.count>1?'<span class="pill-count">×'+p.count+'</span>':'')+'</div></div></div>'+
     '<p>'+p.desc+'</p><div class="pill-props">'+tags.map(([c,t])=>'<span class="tag '+c+'">'+t+'</span>').join('')+'</div>'+
     '<div class="actions"><button class="act eat" type="button" id="aEat"><b>食</b><small>一啖吞落肚</small></button><button class="act" type="button" id="aTest"><b>試藥</b><small>搵師弟食先</small></button><button class="act" type="button" id="aSell"><b>賣</b><small>每粒 '+sellValue(p)+' 靈石</small></button></div>'+
-    (p.count>1?'<div class="more-row"><button class="btn" type="button" id="aSellAll">全部 '+p.count+' 粒賣晒（'+sellValue(p)*p.count+' 靈石）</button></div>':'')
+    ((p.count>1||DL())?'<div class="more-row">'+(DL()?'<button class="btn" type="button" id="aGift">送畀道侶'+DL().name+'</button>':'')+(p.count>1?'<button class="btn" type="button" id="aSellAll">全部 '+p.count+' 粒賣晒（'+sellValue(p)*p.count+' 靈石）</button>':'')+'</div>':'')
   );
   if($('aSellAll'))$('aSellAll').onclick=sellAll;
+  if($('aGift'))$('aGift').onclick=giftPill;
   $('aEat').onclick=eat;$('aTest').onclick=test;$('aSell').onclick=sell;
 }
 function showOutcome(title,lines,fx){
@@ -1673,6 +1833,7 @@ function renderStats(){
     '<span class="stat"><span class="k">心魔</span>'+m(pl.demon,'var(--cinnabar)')+'<b>'+Math.round(pl.demon)+'</b></span>'+
     '<span class="stat"><span class="k">年歲</span><b>'+pl.age+'/'+(ls>9000?'∞':ls)+'</b></span>'+
     '<span class="stat"><span class="k">靈石</span><b>'+pl.stones+'</b></span>'+
+    (DL()?'<button class="stat dlbtn" type="button" id="dlBtn" title="撳嚟睇道侶"><span class="k">道侶</span><b>'+DL().name+'</b><span class="heart">♥'+Math.round(DL().aff)+'</span></button>':'')+
     (MO().on?'<span class="stat"><span class="k" style="color:var(--cinnabar)">惡名</span><b>'+Math.round(MO().infamy)+'</b></span>':'')+
     (()=>{const ta=LN().shidi,oa=LN().oldAge,mk=(P().mo&&P().mo.killed)||0;return'<span class="stat" title="試藥害死嘅師弟妹／弟子 '+ta+'，壽終坐化嘅入室弟子 '+oa+(mk?'；另外試藥害死凡人 '+mk:'')+'"><span class="k">已故弟子</span><b>'+(ta+oa)+'</b>'+(mk?'<span class="k">凡人</span><b>'+mk+'</b>':'')+'</span>';})();
   {const c=C();$('openCar').textContent=c.aff==='own'?c.sectName:c.aff==='sect'?SECTS[c.sect].n:c.aff==='xie'?'丹協':'丹途';}
@@ -1715,6 +1876,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').hidden=t
 $('innerRow').addEventListener('click',e=>{const b=e.target.closest('.dz');if(!b||busy)return;if(b.dataset.a==='draw')showDraw();else showDisciple(+b.dataset.id);});
 $('pop').addEventListener('click',e=>{if(e.target===$('pop')){closePop();return;}onPopClick(e);});
 $('popClose').onclick=closePop;
+$('stats').addEventListener('click',e=>{if(e.target.closest('#dlBtn')&&!busy)showDL();});
 $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
 $('mtLife').onclick=()=>{mTab='life';renderModal();};
@@ -1761,19 +1923,17 @@ function gatherHerbs(){
   const b=bag();Object.keys(got).forEach(k=>b[k]=(b[k]||0)+got[k]);
   const lines=[['你喺山上行咗一年，採到：'+Object.keys(got).map(k=>ING[k].n+(got[k]>1?'×'+got[k]:'')).join('、')+'。已經放入藥囊，煉丹時優先用，唔使錢。']];
   if(pickers.length)lines.push([pickers.map(m=>m.name).join('、')+'跟你上山，多採咗 '+pickers.length+' 份。','good']);
-  const ev=rnd();
-  if(ev<.1){const d=Math.round(5+rnd()*8);pl.cult=Math.max(0,pl.cult-d);lines.push(['半路撞到隻妖獸，打到甩頭甩髻先走得甩。修為 −'+d+'%','bad']);}
-  else if(ev<.17){const u=Math.round(4+rnd()*6);pl.cult+=u;lines.push(['喺山洞發現一眼靈泉，浸咗一晚。修為 +'+u+'%','good']);}
-  else if(ev<.22){pl.stones+=60;lines.push(['喺樹下執到個前人遺下嘅錢袋，有 60 靈石。','good']);}
-  else if(ev<.27){pl.tox=clamp(pl.tox+6,0,200);lines.push(['好奇試食咗粒野果，屙咗成晚。毒素 +6','bad']);}
-  while(pl.cult>=100&&pl.realm<6){pl.cult-=100;pl.realm++;lines.push(['你喺山頂頓悟，突破到「'+REALMS[pl.realm]+'」！','good']);}
-  save.st.maxRealm=Math.max(save.st.maxRealm,pl.realm);
-  showOutcome('上山採藥',lines,'');
-  afterAction();
+  const res=adventure('herb',lines);
+  resolveAdv('上山採藥',lines,res);
 }
 $('herb').onclick=gatherHerbs;
 $('grab').onclick=grab;
-$('task').onclick=()=>{if(busy||!P().alive)return;P().stones+=120;P().age+=1;const d=yaoDrop();afterAction();toast('斬咗隻狼妖，賺到 120 靈石，用咗一年'+(d?'。仲喺妖洞搵到《'+BOOKS[d].n+'》！':''),d?4500:2600);};
+$('task').onclick=()=>{
+  if(busy||!P().alive)return;P().stones+=120;P().age+=1;const d=yaoDrop();
+  const lines=[['你落山斬咗隻狼妖，賺到 120 靈石，用咗一年。']];
+  if(d)lines.push(['仲喺妖洞搵到《'+BOOKS[d].n+'》！','good']);
+  resolveAdv('下山斬妖',lines,adventure('yao',lines));
+};
 $('heat').oninput=e=>{cfg.heat=+e.target.value;renderAll();};
 $('go').onclick=brew;
 function setTab(t){
