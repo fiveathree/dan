@@ -341,7 +341,7 @@ const ARTS={
   tianmo:{n:'天魔噬心訣',d:'藥力暴增，但丹爐同你個心都會唔穩。',stab:-20,pow:30}
 };
 const FIRES={
-  fan:{n:'凡火',el:'f',mul:.6,stab:8,q:-10,yy:0,c:['#ffc46b','#d9632e'],d:'灶頭火。穩陣，但最多只煉到靈品。',cap:2},
+  fan:{n:'凡火',el:'f',mul:.6,stab:8,q:-10,yy:0,c:['#ffc46b','#d9632e'],d:'灶頭火。穩陣，但最多只煉到中品。',cap:2},
   difei:{n:'地肺火',el:'e',mul:1,stab:4,q:0,yy:0,c:['#ffd27a','#b8622b'],d:'地脈深處之火，中規中矩。'},
   fenghuang:{n:'鳳凰涅槃火',el:'f',mul:1.4,stab:-8,q:16,yy:2,c:['#fff7c4','#ff3b2b'],d:'炸爐時有三成機會浴火重生，凝出殘丹。'},
   jiuyou:{n:'九幽冥火',el:'s',mul:1.2,stab:-6,q:8,yy:-2,c:['#c8f4ff','#3f6fd9'],d:'至陰之火。魔道、毒道用佢有額外加成。'},
@@ -379,8 +379,8 @@ const ING={
 };
 const REALMS=['煉氣','築基','金丹','元嬰','化神','渡劫','飛升'];
 const LIFE=[120,220,500,1000,2000,4000,99999];
-const GRADES=['廢丹','凡品','靈品','地品','天品','仙品'];
-const DANWEN=[0,0,2,5,8,9];
+const GRADES=['廢丹','下品','中品','上品','仙丹'];
+const DANWEN=[0,0,3,6,9];
 const NAMES={
   zheng:{m:'破障金丹',w:'長春丹',s:'清心玉露丹',f:'純陽丹',e:'築基丹'},
   mo:{m:'血煞丹',w:'噬魂丹',s:'玄陰魔丹',f:'焚血丹',e:'屍傀丹'},
@@ -398,12 +398,12 @@ const ACHS=[
   {id:'first',n:'初開丹爐',d:'煉第一爐丹',c:s=>s.st.brews>=1,u:['fire:difei','ing:xingchen','ing:duanchang']},
   {id:'boom',n:'眉毛何在',d:'第一次炸爐',c:s=>s.st.booms>=1,u:['fire:fenghuang']},
   {id:'eat',n:'以身試丹',d:'第一次食自己煉嘅丹',c:s=>s.st.eats>=1,u:['path:fo','ing:mantuo']},
-  {id:'ling',n:'靈氣初現',d:'煉出靈品丹',c:s=>s.st.maxG>=2,u:['furn:hulu','ing:heshouwu','ing:tianyi']},
+  {id:'ling',n:'靈氣初現',d:'煉出中品丹',c:s=>s.st.maxG>=2,u:['furn:hulu','ing:heshouwu','ing:tianyi']},
   {id:'five',n:'熟能生巧',d:'累計煉五爐',c:s=>s.st.brews>=5,u:['path:yi','ing:longxian']},
   {id:'shidi',n:'師弟，對唔住',d:'試藥害死第一位師弟',c:s=>s.shidi>=1,u:['path:du']},
   {id:'ten',n:'丹心入魔',d:'累計煉十爐',c:s=>s.st.brews>=10,u:['path:mo','ing:xueputi','fire:jiuyou']},
   {id:'zhuji',n:'築基有成',d:'突破到築基期',c:s=>s.st.maxRealm>=1,u:['fire:sanmei','furn:bagua','ing:yaodan']},
-  {id:'di',n:'地脈之丹',d:'煉出地品丹',c:s=>s.st.maxG>=3,u:['ing:qilin','ing:gengjin']},
+  {id:'di',n:'上品之丹',d:'煉出上品丹',c:s=>s.st.maxG>=3,u:['ing:qilin','ing:gengjin']},
   {id:'jindan',n:'金丹大道',d:'突破到金丹期',c:s=>s.st.maxRealm>=2,u:['fire:zixiao','furn:jiulong','ing:xirang']},
   {id:'codex10',n:'丹譜十頁',d:'收錄十款丹',c:s=>s.codex.length>=10,u:['ing:mengpo']},
   {id:'chicken',n:'阿媽嘅味道',d:'煉出雞湯丹',c:s=>s.codex.includes('雞湯丹'),u:[]},
@@ -411,8 +411,8 @@ const ACHS=[
   {id:'sancai',n:'天地人',d:'煉出三才造化丹',c:s=>s.codex.includes('三才造化丹'),u:[]},
   {id:'icefire',n:'冰火九重天',d:'煉出冰火九重天丹',c:s=>s.codex.includes('冰火九重天丹'),u:[]},
   {id:'shidi5',n:'師門公敵',d:'累計害死五位師弟',c:s=>s.shidi>=5,u:[]},
-  {id:'tian',n:'天降異象',d:'煉出天品丹',c:s=>s.st.maxG>=4,u:[]},
-  {id:'xian',n:'仙丹出世',d:'煉出仙品丹',c:s=>s.st.maxG>=5,u:[]},
+  {id:'tian',n:'天降異象',d:'累計煉出十爐上品或以上',c:s=>(s.st.hiBrews||0)>=10,u:[]},
+  {id:'xian',n:'仙丹出世',d:'煉出仙丹',c:s=>s.st.maxG>=4,u:[]},
   {id:'die',n:'重頭來過',d:'第一次身死道消',c:s=>s.lives>=2,u:[]},
   {id:'codexAll',n:'丹道宗師',d:'收錄全部丹藥',c:s=>s.codex.length>=ALL_PILLS.length,u:[]},
   {id:'cert',n:'持證上崗',d:'考獲一品丹證',c:s=>s.st.maxCert>=1,u:[]},
@@ -434,9 +434,10 @@ function labelOf(key){const [t,id]=key.split(':');return TYPE_DATA[t][id].n;}
 /* ---------- 存檔 ---------- */
 const KEY='dan-sim-v2';
 function newPlayer(){return{realm:0,cult:0,tox:0,demon:0,age:16,lifeBonus:0,stones:600,alive:true,car:newCareer()};}
-function newSave(){return{player:newPlayer(),codex:[],shidi:0,lives:1,ach:[],cheat:false,st:{brews:0,booms:0,eats:0,maxG:0,maxRealm:0,earned:0,flew:0,maxCert:0,joined:0,ownSect:0}};}
+function newSave(){return{gver:2,player:newPlayer(),codex:[],shidi:0,lives:1,ach:[],cheat:false,st:{brews:0,booms:0,eats:0,maxG:0,maxRealm:0,earned:0,flew:0,maxCert:0,joined:0,ownSect:0}};}
 let save=newSave();
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.player){save=Object.assign(newSave(),s);save.st=Object.assign(newSave().st,s.st||{});}}}catch(e){}
+{const OLDG=[0,1,2,3,3,4];if(save.gver!==2){if(save.st.maxG)save.st.maxG=OLDG[save.st.maxG]||0;if(save.recipes)Object.values(save.recipes).forEach(e=>{e.g=OLDG[e.g]!==undefined?OLDG[e.g]:e.g;});save.gver=2;}}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
 
@@ -574,7 +575,7 @@ function learnRecipe(r,src){
   if(R[pv.name]&&R[pv.name].g>=pv.g)return;
   R[pv.name]={cfg:{path:r.path,art:r.art,fire:r.fire,furn:r.furn,heat:pv.heat,order:r.order.slice()},src,g:pv.g};
 }
-function gradeFromQ(Q,fire,furn){let g=Q<15?0:Q<40?1:Q<65?2:Q<90?3:Q<120?4:5;if(FIRES[fire].cap!==undefined)g=Math.min(g,FIRES[fire].cap);if(furn==='wa')g=Math.min(g,3);return g;}
+function gradeFromQ(Q,fire,furn){let g=Q<15?0:Q<45?1:Q<80?2:Q<120?3:4;if(FIRES[fire].cap!==undefined)g=Math.min(g,FIRES[fire].cap);if(furn==='wa')g=Math.min(g,3);return g;}
 function nameFor(a,g,path){
   let kind='normal',name;
   if(a.flags.chicken){kind='chicken';name='雞湯丹';g=1;}
@@ -795,7 +796,7 @@ function careerAfterBrew(grade,exploded){
   if(exploded&&t.helpers.length&&rnd()<.5)msgs.push(t.helpers[0]+'被炸到成面黑，但冇大礙');
   // 聲望
   if(c.aff==='own'){
-    const pr=Math.round((exploded?0:grade*grade*3)+t.pres);c.pres+=pr;if(pr>0)msgs.push('門派聲望 +'+pr);
+    const pr=Math.round((exploded?0:grade*grade*4)+t.pres);c.pres+=pr;if(pr>0)msgs.push('門派聲望 +'+pr);
     while(c.lvl<SECT_LV.length-1&&c.pres>=SECT_LV[c.lvl+1].need){c.lvl++;msgs.push(c.sectName+'晉升為「'+SECT_LV[c.lvl].n+'」！');if(c.lvl===4)P().lifeBonus+=300;}
   }
   if(!c.cands.length&&c.aff)refreshCands(true);
@@ -1184,7 +1185,7 @@ function finish(a,exploded){
   }else current=makePill(a,false);
   current.count=phoenixDone?1:yieldCount();
   log('開爐','得到：'+current.name+'（'+current.gradeName+'）×'+current.count,'good');
-  save.st.maxG=Math.max(save.st.maxG,current.grade);
+  save.st.maxG=Math.max(save.st.maxG,current.grade);if(current.grade>=3)save.st.hiBrews=(save.st.hiBrews||0)+1;
   if(!save.codex.includes(current.name)){save.codex.push(current.name);toast('丹譜新增：'+current.name);}
   recordBrew(current).forEach(m=>log('丹書',m,'good'));
   careerAfterBrew(current.grade,exploded).forEach(m=>log('丹途',m,'good'));
@@ -1203,7 +1204,7 @@ function pillDesc(kind,g){
   if(kind==='raw')return'火候唔夠，藥材都未化開，咬落去仲有渣。';
   if(kind==='burnt')return'火太猛，成粒燶晒，聞落似燒肉燶咗嗰陣味。';
   if(kind==='meng')return'丹身灰白，帶住奈何橋邊嘅霧氣。望耐咗會唔記得自己望緊乜。';
-  const adj=['','丹身粗糙，略有藥香。','丹身圓潤，靈氣流轉。','丹紋隱現，有地脈之氣。','丹紋璀璨，開爐時引動天象。','九道丹紋繞身，丹香傳遍十里。'][g];
+  const adj=['','丹身粗糙，略有藥香。','丹身圓潤，靈氣流轉，隱隱有三道丹紋。','六道丹紋璀璨，開爐時霞光滿室。','九道丹紋繞身，開爐時天降異象，丹香傳遍十里。'][g];
   const flav={zheng:'氣息中正平和。',mo:'表面有血絲流動，隱隱傳來低語。',du:'一陣甜甜腥腥嘅味，旁邊隻蚊跌咗落地。',fo:'散發淡淡金光，有梵唱迴響。',yi:'清香撲鼻，聞一聞都精神咗。'}[cfg.path];
   return adj+flav;
 }
@@ -1242,7 +1243,7 @@ function sellAll(){
   showOutcome('賣丹',[[(p.path==='mo'||p.path==='du'?'黑市':'丹閣')+'掌櫃收晒你 '+n+' 粒'+p.name+'，畀咗 '+v+' 靈石。']],'');
   afterAction();
 }
-function sellValue(p){let v=[1,30,90,250,700,2000][p.grade];if(p.path==='mo'||p.path==='du')v*=1.3;if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;const c=C();if(c.aff==='xie')v*=1.1;if(c.aff==='own'&&c.lvl>=2)v*=1.2;return Math.round(v);}
+function sellValue(p){let v=[1,30,120,450,2000][p.grade];if(p.path==='mo'||p.path==='du')v*=1.3;if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;const c=C();if(c.aff==='xie')v*=1.1;if(c.aff==='own'&&c.lvl>=2)v*=1.2;return Math.round(v);}
 
 /* ---------- 食丹後果 ---------- */
 function effects(p,realm){
