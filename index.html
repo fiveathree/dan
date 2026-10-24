@@ -876,7 +876,7 @@ function resolveAdv(title,lines,res){
 
 /* ---------- 忠誠度、升降 ---------- */
 function isInner(m){return inner().includes(m);}
-function loyBase(m){if(isInner(m))return 70;const h=headD();return 50+(h&&loy(h)>=50?5:0);}
+function loyBase(m){if(isInner(m))return 70;const h=headD();return(m.fame?65:50)+(h&&loy(h)>=50?5:0);}
 function loy(m){if(m.loy===undefined)m.loy=loyBase(m);return m.loy;}
 function addLoy(m,d){m.loy=clamp(loy(m)+d,0,100);}
 function loyMult(m){const l=loy(m);return l<30?.5:l>=80?1.1:1;}
@@ -1032,7 +1032,7 @@ function yearTick(){
     loyTick(msgs);dlTick(msgs);marketDecay();priceTick();roomDecay(msgs);
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
-      if(rnd()*100<ch){const m=genCand();m.cost=0;c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做記名弟子');}
+      if(rnd()*100<ch){const m=genCand();m.cost=0;m.fame=1;m.loy=80+Math.floor(rnd()*16);c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做記名弟子（忠誠 '+m.loy+'）');bio(m.name+'慕名而嚟拜師');}
     }
   }
   if(msgs.length)toast(msgs.join('；'),5000);
@@ -1065,7 +1065,7 @@ function showJiming(msg){
   h+='<div class="mems">';
   if(!c.members.length)h+='<div class="desc">未有記名弟子。</div>';
   c.members.forEach(m=>{
-    h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+'<button class="ib" type="button" data-a="jdis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
+    h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b>'+(m.fame?'<span class="tag good">慕名</span>':'')+'<span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+'<button class="ib" type="button" data-a="jdis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
       '<div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="jrole" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+
       loyActs(m,'jm')+(canDraw()?'<button class="btn" type="button" data-a="jpromo" data-id="'+m.id+'">升為入室弟子'+(inner().length>=innerCap()?'（要對調）':'')+'</button>':'')+'</div>';
   });
