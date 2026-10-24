@@ -184,7 +184,9 @@ canvas{display:block;width:100%;height:100%}
 
 .modal{position:fixed;inset:0;z-index:30;background:rgba(10,7,6,.8);display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
 .mbox{width:100%;max-width:760px;max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--bronze);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:12px}
-.mtabs{display:flex;gap:6px;align-items:center}
+.mtabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:none}
+#modal>.mbox{height:min(720px,100%);max-width:820px;overflow:hidden}
+.mscroll{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;display:flex;flex-direction:column;gap:12px;padding-right:4px}
 .mtabs .btn[aria-selected="true"]{border-color:var(--bronze);background:#4a3520}
 .achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
 .ach{border:1px solid var(--line);border-radius:4px;padding:6px 8px;background:var(--panel2);display:flex;flex-direction:column;gap:1px}
@@ -354,6 +356,7 @@ canvas{display:block;width:100%;height:100%}
       <span style="flex:1"></span>
       <button class="btn" type="button" id="mClose">關閉</button>
     </div>
+    <div class="mscroll" id="mScroll">
     <h2 id="mTitle"></h2>
     <div id="mBody"></div>
     <div class="cheat">
@@ -364,6 +367,7 @@ canvas{display:block;width:100%;height:100%}
       <button class="btn danger" type="button" id="reset">全部重來</button>
     </div>
     <div class="desc" id="mMsg"></div>
+    </div>
   </div>
 </div>
 <div class="modal" id="pop" hidden><div class="mbox pbox" role="dialog" aria-modal="true"><div id="popBody" style="display:flex;flex-direction:column;gap:10px"></div><div class="more-row"><button class="btn" type="button" id="popClose">關閉</button></div></div></div>
@@ -503,6 +507,25 @@ try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.
 {const OLDG=[0,1,2,3,3,4];if(save.gver!==2){if(save.st.maxG)save.st.maxG=OLDG[save.st.maxG]||0;if(save.recipes)Object.values(save.recipes).forEach(e=>{e.g=OLDG[e.g]!==undefined?OLDG[e.g]:e.g;});save.gver=2;}}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
+
+function sellFromRoom(i,n){
+  const dr=DR();const s=dr.stacks[i];if(!s)return;n=Math.min(n,s.count);
+  const p=Object.assign({},s,{count:n});s.count-=n;if(s.count<=0)dr.stacks.splice(i,1);
+  const keep=current;current=p;const lines=doSell(n,false,true)||[];current=keep;
+  persist();renderAll();
+  const m=$('mMsg');if(m){m.textContent=lines.map(l=>l[0]).join(' ');m.className='desc'+(lines.some(l=>l[1]==='bad')?' bad':'');}
+}
+function renderStock(){
+  const st=DR().stacks;
+  let h='<div class="label" style="margin-top:8px">丹室存貨<em>'+roomCount()+' / '+roomCap()+' 粒</em></div>';
+  if(!st.length)return h+'<div class="desc">丹室冇存貨。出丹時撳「收入丹室」就可以喺度直接賣。</div>';
+  h+='<div class="tbl-wrap"><table class="mkt"><thead><tr><th>丹藥</th><th>品級</th><th>數量</th><th>每粒</th><th></th></tr></thead><tbody>';
+  st.forEach((x,i)=>{
+    h+='<tr><td>'+x.name+(isBlack(x)?' <span class="tag bad">黑市</span>':'')+'</td><td>'+x.gradeName+'</td><td>×'+x.count+'</td><td>'+sellValue(x)+'</td><td><button class="btn" type="button" data-a="ss1" data-i="'+i+'">賣一粒</button> <button class="btn" type="button" data-a="ssa" data-i="'+i+'">全部賣（約 '+quoteN(x,x.count)+'）</button></td></tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+
 
 /* ---------- 籠絡弟子 ---------- */
 function headD(){const c=C();return c.head?inner().find(x=>x.id===c.head)||null:null;}
@@ -678,6 +701,7 @@ function onRoomClick(e){
   else if(a==='gear')buyGear(b.dataset.k);
   else if(a==='sg'){shopGrade=+b.dataset.g;renderModal();}
   else if(a==='bp')buyPill(b.dataset.n,shopGrade);
+  else if(a==='ss1'||a==='ssa'){const s_=DR().stacks[+b.dataset.i];if(s_)sellFromRoom(+b.dataset.i,a==='ss1'?1:s_.count);}
 }
 
 
@@ -695,7 +719,7 @@ function satMult(name,extra){const u=(market()[name]||0)+(extra||0);return 1/(1+
 function quoteN(p,n){let t=0;for(let i=0;i<n;i++)t+=Math.max(1,Math.round(basePrice(p)*satMult(p.name,i)));return t;}
 function sellValue(p){return quoteN(p,1);}
 function marketDecay(){const M=market();Object.keys(M).forEach(k=>{M[k]*=.75;if(M[k]<.3)delete M[k];});}
-function doSell(n,auto){
+function doSell(n,auto,quiet){
   const p=current;if(!p)return;n=Math.min(n,p.count||1);
   const black=isBlack(p);let v=quoteN(p,n);const lines=[];let sold=true;
   const where=black?'黑市':'丹閣';
@@ -718,6 +742,7 @@ function doSell(n,auto){
     if(satMult(p.name)<.7)lines.push(['市面上'+p.name+'太多，價錢已經被壓低，過幾年先會回升。']);}
   p.count=(p.count||1)-n;if(p.count<=0)current=null;
   if(auto)return v;
+  if(quiet){afterAction();return lines;}
   showOutcome(black?'黑市賣丹':'賣丹',lines,'');
   afterAction();
 }
@@ -1404,7 +1429,7 @@ function renderShop(){
   if(!st.length)h+='<div class="desc">今年冇新貨，過一年再嚟睇。</div>';
   st.forEach(id=>{const B=BOOKS[id];h+='<div class="mem"><div class="mem-h"><b>《'+B.n+'》</b><span class="tag">'+BOOK_T[B.t]+'</span></div><div class="desc">'+B.d+(B.rec?' 載有 '+B.rec.length+' 條丹方。':'')+'</div><button class="btn" type="button" data-a="buy" data-id="'+id+'" '+(P().stones<priceOf(B)?'disabled':'')+'>買（'+priceOf(B)+' 靈石）</button></div>';});
   h+='</div>';
-  $('mBody').innerHTML=renderMarket()+'<div class="label" style="margin-top:8px">藏書</div>'+h+renderGear();
+  $('mBody').innerHTML=renderMarket()+renderStock()+'<div class="label" style="margin-top:8px">藏書</div>'+h+renderGear();
 }
 function onBookClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
@@ -2117,7 +2142,9 @@ function renderAll(){
 
 /* ---------- 成就／丹譜彈窗 ---------- */
 let mTab='ach';
+let lastTab=null;
 function renderModal(){
+  if(mTab!==lastTab){lastTab=mTab;const sc=$('mScroll');if(sc)sc.scrollTop=0;}
   [['mtBook','book'],['mtShop','shop'],['mtRoom','room'],['mtAch','ach'],['mtCodex','codex'],['mtCar','car'],['mtLife','life']].forEach(([id,t])=>$(id).setAttribute('aria-selected',mTab===t));
   if(mTab==='book'){$('mTitle').innerHTML='丹書<span>'+Object.keys(recipes()).length+' 條丹方　'+books().length+' 本藏書</span>';renderBooks();return;}
   if(mTab==='room'){$('mTitle').innerHTML='丹室<span>'+roomCount()+' / '+roomCap()+' 粒　你有 '+P().stones+' 靈石</span>';renderRoom();return;}
@@ -2139,7 +2166,7 @@ function renderModal(){
   }
 }
 $('openAch').onclick=()=>{mTab='ach';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
-$('mClose').onclick=()=>{$('modal').hidden=true;};
+$('mClose').onclick=()=>{$('modal').hidden=true;lastTab=null;};
 $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').hidden=true;};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').hidden=true;closePop();}});
 $('innerRow').addEventListener('click',e=>{const b=e.target.closest('.dz');if(!b||busy)return;const k=b.dataset.cell;if(k==='dl')showDLCell();else if(k==='inner')showInnerList();else if(k==='jm')showJiming();});
