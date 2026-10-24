@@ -219,6 +219,16 @@ canvas{display:block;width:100%;height:100%}
 .mem-h .ib{margin-left:auto}
 .mem .chip{padding:1px 6px;font-size:12px}
 .team-sum{color:var(--jade)}
+.lives{display:flex;flex-direction:column;gap:8px}
+.life{border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--panel2);display:flex;flex-direction:column;gap:5px}
+.life.cur{border-color:var(--jade)}
+.life-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.life-h b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--bronze)}
+.life-st{font-size:12px;color:var(--muted)}
+.tl{list-style:none;margin:0;padding:0 0 0 10px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:2px;font-size:13px;max-height:180px;overflow-y:auto}
+.tl li{display:flex;gap:8px}
+.tl li span{color:var(--muted);flex:none;width:4.2em;font-variant-numeric:tabular-nums}
+.card .lives .tl{max-height:120px}
 .inner-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .dz{--apt:var(--line);display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--apt);border-radius:6px;padding:5px 8px;text-align:left;min-width:0;position:relative;overflow:hidden}
 .dz:hover{border-color:var(--bronze);border-left-color:var(--apt)}
@@ -325,6 +335,7 @@ canvas{display:block;width:100%;height:100%}
       <button class="btn" type="button" id="mtShop" aria-selected="false">商行</button>
       <button class="btn" type="button" id="mtAch" aria-selected="true">成就</button>
       <button class="btn" type="button" id="mtCodex" aria-selected="false">丹譜</button>
+      <button class="btn" type="button" id="mtLife" aria-selected="false">前世</button>
       <button class="btn" type="button" id="mtCar" aria-selected="false">丹途門派</button>
       <span style="flex:1"></span>
       <button class="btn" type="button" id="mClose">關閉</button>
@@ -474,6 +485,55 @@ try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
 
+/* ---------- 生平 ---------- */
+function LN(){const pl=P();if(!pl.n)pl.n={brews:0,booms:0,eats:0,earned:0,shidi:0,oldAge:0,best:-1,bestName:''};return pl.n;}
+function bio(t){const pl=P();if(!pl.bio)pl.bio=[];pl.bio.push({a:pl.age,t});if(pl.bio.length>60)pl.bio.splice(1,1);}
+function bioTrack(){
+  const pl=P();if(!pl.alive&&pl.bt)return;const c=C();const m=MO();
+  if(!pl.bt){pl.bt={realm:pl.realm,cert:c.cert,aff:c.aff,sect:c.sect,mo:m.on,lvl:c.lvl,skill:c.skill};if(!pl.bio||!pl.bio.length)bio('入門學煉丹');return;}
+  const b=pl.bt;
+  if(pl.realm>b.realm)bio('突破到「'+REALMS[pl.realm]+'」期');
+  if(c.skill>b.skill&&[3,6,10].some(k=>c.skill>=k&&b.skill<k))bio('丹術到達「'+SKILL_N[c.skill]+'」');
+  if(c.cert>b.cert)bio('考獲'+CERT[c.cert]+'丹證');
+  if(c.aff!==b.aff||c.sect!==b.sect){
+    if(c.aff==='xie')bio('加入煉丹協會');
+    else if(c.aff==='sect')bio('拜入'+SECTS[c.sect].n);
+    else if(c.aff==='own')bio('開宗立派，創立「'+c.sectName+'」');
+    else if(!c.aff&&b.aff)bio('被'+(b.aff==='xie'?'煉丹協會':b.aff==='sect'?SECTS[b.sect].n:'門派')+'除名');
+  }
+  if(c.aff==='own'&&c.lvl>b.lvl)bio(c.sectName+'晉升為「'+SECT_LV[c.lvl].n+'」');
+  if(m.on&&!b.mo)bio('走火入魔，成為魔頭');
+  if(!m.on&&b.mo)bio('放下屠刀，回頭是岸');
+  pl.bt={realm:pl.realm,cert:c.cert,aff:c.aff,sect:c.sect,mo:m.on,lvl:c.lvl,skill:c.skill};
+}
+function lifeRecord(title,text,win){
+  const pl=P();const n=LN();const c=C();const m=MO();
+  const r={life:save.lives,cause:title,text,win:!!win,age:pl.age,realm:pl.realm,title:titleOf(),
+    n:Object.assign({},n),inner:inner().map(d=>d.name+'（'+APT[d.apt].n+'）'),members:c.members.length,
+    caught:m.caught||0,killed:m.killed||0,bio:(pl.bio||[]).slice()};
+  r.bio.push({a:pl.age,t:title});
+  if(!save.history)save.history=[];save.history.unshift(r);if(save.history.length>30)save.history.length=30;
+  return r;
+}
+function bioHtml(r,cur){
+  const n=r.n;
+  let h='<div class="life'+(cur?' cur':'')+'"><div class="life-h"><b>第'+CN_NUM(r.life)+'世</b><span class="tag '+(cur?'good':r.win?'good':'bad')+'">'+(cur?'今生':r.cause)+'</span><span class="desc">'+(cur?'而家':'享年')+' '+r.age+' 歲 · '+REALMS[r.realm]+'期 · '+r.title+'</span></div>';
+  if(!cur&&r.text)h+='<p class="desc">'+r.text+'</p>';
+  h+='<div class="life-st">煉丹 '+n.brews+' 爐（炸爐 '+n.booms+'）· 食丹 '+n.eats+' 粒 · 賣丹得 '+n.earned+' 靈石'+(n.bestName?' · 最好嘅丹：'+n.bestName+'（'+GRADES[n.best]+'）':'')+' · 已故弟子 '+(n.shidi+n.oldAge)+(r.killed?' · 試死凡人 '+r.killed:'')+(r.caught?' · 擄人 '+r.caught:'')+(r.inner&&r.inner.length?' · 入室弟子：'+r.inner.join('、'):'')+'</div>';
+  h+='<ol class="tl">'+r.bio.map(e=>'<li><span>'+e.a+' 歲</span>'+e.t+'</li>').join('')+'</ol></div>';
+  return h;
+}
+function CN_NUM(n){const d=['〇','一','二','三','四','五','六','七','八','九'];if(n<10)return d[n];if(n<20)return'十'+(n%10?d[n%10]:'');return d[Math.floor(n/10)]+'十'+(n%10?d[n%10]:'');}
+function renderLives(){
+  const pl=P();
+  const cur={life:save.lives,age:pl.age,realm:pl.realm,title:titleOf(),n:LN(),inner:inner().map(d=>d.name+'（'+APT[d.apt].n+'）'),killed:MO().killed||0,caught:MO().caught||0,bio:(pl.bio||[])};
+  let h=pl.alive?bioHtml(cur,true):'';
+  (save.history||[]).forEach(r=>{h+=bioHtml(r,false);});
+  if(!h)h='<div class="desc">未有紀錄。</div>';
+  $('mBody').innerHTML='<div class="lives">'+h+'</div>';
+}
+
+
 /* ---------- 入室弟子（收徒抽籤） ---------- */
 const APT=[
   {n:'下等',m:.8,g:.6,c:'#9a8a7a',life:0},
@@ -531,7 +591,7 @@ function yearTick(){
       d.age++;d.cult+=(3+d.skill*.6)*APT[d.apt].g*(d.pers==='lan'?.5:1);
       while(d.cult>=100&&d.realm<5){d.cult-=100;d.realm++;msgs.push('入室弟子'+d.name+'突破到「'+REALMS[d.realm]+'」');}
       if(d.realm>=5)d.cult=Math.min(d.cult,100);
-      if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
+      if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;LN().oldAge++;bio('入室弟子'+d.name+'壽終坐化');msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
@@ -592,7 +652,7 @@ function takeDraw(rep){
   const d=pendingDraw;if(!d)return;const c=C();
   if(rep){const old=inner().find(x=>x.id===rep);c.inner=inner().filter(x=>x.id!==rep);if(old)toast(old.name+'出師下山，自立門戶去');}
   if(inner().length>=INNER_CAP)return;
-  inner().push(d);save.st.bestApt=Math.max(save.st.bestApt||0,d.apt);pendingDraw=null;closePop();afterAction();toast(d.name+'正式拜入門下，成為入室弟子');
+  inner().push(d);save.st.bestApt=Math.max(save.st.bestApt||0,d.apt);bio('收'+d.name+'（'+APT[d.apt].n+'資質）為入室弟子');pendingDraw=null;closePop();afterAction();toast(d.name+'正式拜入門下，成為入室弟子');
 }
 function onPopClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a;
@@ -1304,8 +1364,8 @@ function brew(){
   if(!cfg.order.length){toast('爐入面未有藥材');return;}
   const c=costOf();if(P().stones<c){toast('靈石唔夠（要 '+c+'），撳「下山斬妖」賺返啲先');return;}
   {const u=bagSplit().used;const b=bag();Object.keys(u).forEach(k=>{b[k]-=u[k];if(b[k]<=0)delete b[k];});}
-  P().stones-=c;P().age+=1;save.st.brews++;
-  if(current&&current.count>0){const v=sellValue(current)*current.count;P().stones+=v;save.st.earned+=v;toast('上一爐剩低嘅 '+current.count+' 粒'+current.name+'已經自動賣咗，得 '+v+' 靈石',3500);}
+  P().stones-=c;P().age+=1;save.st.brews++;LN().brews++;
+  if(current&&current.count>0){const v=sellValue(current)*current.count;P().stones+=v;save.st.earned+=v;LN().earned+=v;toast('上一爐剩低嘅 '+current.count+' 粒'+current.name+'已經自動賣咗，得 '+v+' 靈石',3500);}
   busy=true;brewing=true;current=null;closeOverlay();$('log').innerHTML='';renderAll();
   const a=analyse();const F=FIRES[cfg.fire];
   const exploded=rnd()*100<a.boom;
@@ -1341,7 +1401,7 @@ function turnMsg(a,i,F){
 function finish(a,exploded){
   brewing=false;let phoenixDone=false;
   if(exploded){
-    save.st.booms++;
+    save.st.booms++;LN().booms++;
     flash=1;const w=$('stage');w.classList.remove('shake');void w.offsetWidth;w.classList.add('shake');
     log('爆','轟！丹爐炸咗！','boom');
     if(cfg.fire==='fenghuang'&&rnd()<.3){log('涅槃','鳳凰火捲住殘渣，重新凝成一粒丹','good');current=makePill(a,true);phoenixDone=true;}
@@ -1355,7 +1415,8 @@ function finish(a,exploded){
   }else current=makePill(a,false);
   current.count=phoenixDone?1:yieldCount();
   log('開爐','得到：'+current.name+'（'+current.gradeName+'）×'+current.count,'good');
-  save.st.maxG=Math.max(save.st.maxG,current.grade);if(current.grade>=3)save.st.hiBrews=(save.st.hiBrews||0)+1;
+  save.st.maxG=Math.max(save.st.maxG,current.grade);
+  {const n=LN();if(!FAIL_KINDS.includes(current.kind)&&current.grade>n.best){if(current.grade>=2)bio('第一次煉出'+GRADES[current.grade]+'丹藥：'+current.name);n.best=current.grade;n.bestName=current.name;}}if(current.grade>=3)save.st.hiBrews=(save.st.hiBrews||0)+1;
   if(!save.codex.includes(current.name)){save.codex.push(current.name);toast('丹譜新增：'+current.name);}
   recordBrew(current).forEach(m=>log('丹書',m,'good'));
   careerAfterBrew(current.grade,exploded).forEach(m=>log('丹途',m,'good'));
@@ -1409,7 +1470,7 @@ function showOutcome(title,lines,fx){
 }
 function useOne(){if(!current)return;current.count=(current.count||1)-1;if(current.count<=0)current=null;}
 function sellAll(){
-  const p=current;if(!p)return;const n=p.count||1;const v=sellValue(p)*n;P().stones+=v;save.st.earned+=v;current=null;
+  const p=current;if(!p)return;const n=p.count||1;const v=sellValue(p)*n;P().stones+=v;save.st.earned+=v;LN().earned+=v;current=null;
   showOutcome('賣丹',[[(p.path==='mo'||p.path==='du'?'黑市':'丹閣')+'掌櫃收晒你 '+n+' 粒'+p.name+'，畀咗 '+v+' 靈石。']],'');
   afterAction();
 }
@@ -1437,7 +1498,7 @@ const GOOD_EAT={mo:'一股暴戾嘅力量湧入丹田，你忍唔住笑咗出聲
 function eat(){
   const p=current;if(!p||!P().alive)return;
   const pl=P();const e=effects(p,pl.realm);
-  save.st.eats++;useOne();
+  save.st.eats++;LN().eats++;useOne();
   if(e.risk&&rnd()*100<e.risk){
     current=null;checkAch();
     endLife('爆體而亡','你食咗一粒'+p.gradeName+'嘅'+p.name+'，以'+REALMS[pl.realm]+'期嘅身體承受唔住，「嘭」一聲化成一團血霧。');
@@ -1494,8 +1555,8 @@ function testBy(mid){
   const e=effects(p,m?m.realm:0);const mine=effects(p,P().realm);
   const lines=[];
   if(e.risk&&rnd()*100<e.risk){
-    save.shidi++;
-    lines.push([who+'一食落去，七孔噴出彩虹色嘅光，當場仙逝。（已故師弟妹第 '+save.shidi+' 位）','bad']);
+    save.shidi++;LN().shidi++;bio(who+'試藥身亡');
+    lines.push([who+'一食落去，七孔噴出彩虹色嘅光，當場仙逝。（今生已故弟子第 '+(LN().shidi+LN().oldAge)+' 位）','bad']);
     if(m){c.members=c.members.filter(x=>x.id!==m.id);c.inner=inner().filter(x=>x.id!==m.id);lines.push(['你失去咗'+(m.role!=='idle'?'負責'+ROLES[m.role].n+'嘅':'')+juniorWord(m)+m.name+'。','bad']);}
   }
   else if(p.kind==='chicken')lines.push([who+'話：「呢個咪雞湯囉。」']);
@@ -1515,7 +1576,7 @@ function testBy(mid){
   afterAction();
 }
 function sell(){
-  const p=current;if(!p)return;const v=sellValue(p);P().stones+=v;save.st.earned+=v;
+  const p=current;if(!p)return;const v=sellValue(p);P().stones+=v;save.st.earned+=v;LN().earned+=v;
   useOne();
   showOutcome('賣丹',[[(p.path==='mo'||p.path==='du'?'黑市':'丹閣')+'掌櫃收咗你粒'+p.name+'，畀咗 '+v+' 靈石。']],'');
   afterAction();
@@ -1534,16 +1595,19 @@ function checkLife(){
 }
 function endLife(title,text,win){
   const pl=P();pl.alive=false;
+  bioTrack();
   save.dead={title,text:text+'　最終境界：'+REALMS[pl.realm]+'。',win:!!win};
+  lifeRecord(title,save.dead.text,win);
   checkAch();persist();renderAll();showDeath();
 }
 function showDeath(){
   const d=save.dead;if(!d)return;
-  openOverlay('<h3 style="font-family:var(--display);font-weight:400;font-size:32px;margin:0;color:'+(d.win?'var(--bronze)':'var(--cinnabar)')+'">'+d.title+'</h3><p>'+d.text+'</p><button class="btn" type="button" id="rebirth">轉世重修（保留丹譜同成就）</button>');
+  openOverlay('<h3 style="font-family:var(--display);font-weight:400;font-size:32px;margin:0;color:'+(d.win?'var(--bronze)':'var(--cinnabar)')+'">'+d.title+'</h3><p>'+d.text+'</p>'+(save.history&&save.history[0]?'<div class="lives">'+bioHtml(save.history[0],false).replace('<p class="desc">'+save.history[0].text+'</p>','')+'</div>':'')+'<div class="more-row"><button class="btn" type="button" id="seeLives">睇前世</button><button class="btn" type="button" id="rebirth">轉世重修（保留丹譜、丹書同成就）</button></div>');
+  $('seeLives').onclick=()=>openTab('life');
   $('card').classList.toggle('death-card',!d.win);
-  $('rebirth').onclick=()=>{save.player=newPlayer();delete save.dead;save.lives++;closeOverlay();$('log').innerHTML='';current=null;afterAction();toast('第 '+save.lives+' 世，重新入門');};
+  $('rebirth').onclick=()=>{save.player=newPlayer();delete save.dead;save.lives++;bioTrack();closeOverlay();$('log').innerHTML='';current=null;afterAction();toast('第 '+save.lives+' 世，重新入門');};
 }
-function afterAction(){moTick();yearTick();checkLife();checkAch();fixCfg();persist();renderAll();}
+function afterAction(){moTick();yearTick();bioTrack();checkLife();checkAch();fixCfg();persist();renderAll();}
 
 /* ---------- 狀態列 ---------- */
 function renderStats(){
@@ -1558,7 +1622,7 @@ function renderStats(){
     '<span class="stat"><span class="k">年歲</span><b>'+pl.age+'/'+(ls>9000?'∞':ls)+'</b></span>'+
     '<span class="stat"><span class="k">靈石</span><b>'+pl.stones+'</b></span>'+
     (MO().on?'<span class="stat"><span class="k" style="color:var(--cinnabar)">惡名</span><b>'+Math.round(MO().infamy)+'</b></span>':'')+
-    (()=>{const ta=save.shidi,oa=save.st.oldAge||0,mk=(P().mo&&P().mo.killed)||0;return'<span class="stat" title="試藥害死嘅師弟妹／弟子 '+ta+'，壽終坐化嘅入室弟子 '+oa+(mk?'；另外試藥害死凡人 '+mk:'')+'"><span class="k">已故弟子</span><b>'+(ta+oa)+'</b>'+(mk?'<span class="k">凡人</span><b>'+mk+'</b>':'')+'</span>';})();
+    (()=>{const ta=LN().shidi,oa=LN().oldAge,mk=(P().mo&&P().mo.killed)||0;return'<span class="stat" title="試藥害死嘅師弟妹／弟子 '+ta+'，壽終坐化嘅入室弟子 '+oa+(mk?'；另外試藥害死凡人 '+mk:'')+'"><span class="k">已故弟子</span><b>'+(ta+oa)+'</b>'+(mk?'<span class="k">凡人</span><b>'+mk+'</b>':'')+'</span>';})();
   {const c=C();$('openCar').textContent=c.aff==='own'?c.sectName:c.aff==='sect'?SECTS[c.sect].n:c.aff==='xie'?'丹協':'丹途';}
   $('openAch').textContent='成就 '+save.ach.length+'/'+ACHS.length+(save.cheat?'・秘':'');
 }
@@ -1573,9 +1637,10 @@ function renderAll(){
 /* ---------- 成就／丹譜彈窗 ---------- */
 let mTab='ach';
 function renderModal(){
-  [['mtBook','book'],['mtShop','shop'],['mtAch','ach'],['mtCodex','codex'],['mtCar','car']].forEach(([id,t])=>$(id).setAttribute('aria-selected',mTab===t));
+  [['mtBook','book'],['mtShop','shop'],['mtAch','ach'],['mtCodex','codex'],['mtCar','car'],['mtLife','life']].forEach(([id,t])=>$(id).setAttribute('aria-selected',mTab===t));
   if(mTab==='book'){$('mTitle').innerHTML='丹書<span>'+Object.keys(recipes()).length+' 條丹方　'+books().length+' 本藏書</span>';renderBooks();return;}
   if(mTab==='shop'){$('mTitle').innerHTML='商行<span>你有 '+P().stones+' 靈石</span>';renderShop();return;}
+  if(mTab==='life'){$('mTitle').innerHTML='前世今生<span>第 '+save.lives+' 世</span>';renderLives();return;}
   if(mTab==='car'){$('mTitle').innerHTML='丹途門派<span>'+titleOf()+'</span>';renderCareer();return;}
   if(mTab==='ach'){
     $('mTitle').innerHTML='成就<span>已達成 '+save.ach.length+' / '+ACHS.length+'　第 '+save.lives+' 世</span>';
@@ -1600,6 +1665,7 @@ $('pop').addEventListener('click',e=>{if(e.target===$('pop')){closePop();return;
 $('popClose').onclick=closePop;
 $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
+$('mtLife').onclick=()=>{mTab='life';renderModal();};
 $('mtCar').onclick=()=>{mTab='car';$('mMsg').textContent='';renderModal();};
 $('openCar').onclick=()=>{mTab='car';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
 $('mBody').addEventListener('click',e=>{
@@ -1667,7 +1733,7 @@ $('tFa').onclick=()=>setTab('fa');$('tHuo').onclick=()=>setTab('huo');$('tShelf'
 setTab('shelf');
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,ms||2600);}
 
-ensureStart();fixCfg();resize();renderAll();
+ensureStart();bioTrack();fixCfg();resize();renderAll();
 if(!P().alive&&save.dead)showDeath();else if(!P().alive)P().alive=true;
 requestAnimationFrame(loop);
 })();
