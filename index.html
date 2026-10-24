@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>九轉丹房</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: 三欄丹房 — 左：丹方（丹道/心法/火/爐）｜中：藥櫃與投料順序｜右：丹爐與爐火紀錄；窄屏順序堆疊 */
+:root{
+  --ink:#1a1210;      /* 丹房暗木 */
+  --panel:#241915;
+  --panel2:#30221c;
+  --line:#4b372a;
+  --bronze:#c9a15a;   /* 青銅鼎 */
+  --cinnabar:#de4e2f; /* 硃砂 */
+  --jade:#74b89c;     /* 玉 */
+  --paper:#ecdfc8;
+  --muted:#a8937a;
+  --display:"Ma Shan Zheng","STKaiti","KaiTi","BiauKai",serif;
+  --body:"Noto Serif TC","Songti TC","PMingLiU","MingLiU",serif;
+  --el-m:#d9c27a; --el-w:#86b86b; --el-s:#62a9d6; --el-f:#e2583c; --el-e:#b78d55;
+  color-scheme:dark;
+}
+html{background:var(--ink)}
+body{
+  background:var(--ink);color:var(--paper);font-family:var(--body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:16px 40px;
+}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--bronze);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:1px solid var(--line);padding-bottom:12px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,6vw,54px);line-height:1;margin:0;color:var(--bronze);letter-spacing:.06em}
+h1 small{font-family:var(--body);font-size:13px;color:var(--muted);letter-spacing:.2em;margin-left:10px;vertical-align:middle}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;align-items:center}
+.stat{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.stat b{font-weight:600;color:var(--paper);font-variant-numeric:tabular-nums}
+.stat .k{color:var(--muted);letter-spacing:.1em}
+.meter{width:72px;height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px;transition:width .5s}
+.realm{font-family:var(--display);font-size:24px;color:var(--bronze);line-height:1}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1.1fr);gap:16px;align-items:start}
+@media (max-width:1000px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.furnace-col{grid-column:1/-1}}
+@media (max-width:680px){.grid{grid-template-columns:minmax(0,1fr)}}
+section.col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:16px;min-width:0}
+h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0;color:var(--paper);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 span{font-family:var(--body);font-size:12px;color:var(--muted);letter-spacing:.1em}
+.group{display:flex;flex-direction:column;gap:6px}
+.label{font-size:12px;color:var(--muted);letter-spacing:.25em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font-size:14px;transition:border-color .15s,background .15s}
+.chip:hover{border-color:var(--bronze)}
+.chip[aria-pressed="true"]{border-color:var(--bronze);background:#4a3520;color:#fff3da}
+.desc{font-size:12.5px;color:var(--muted);min-height:1.4em}
+
+.heat{display:flex;flex-direction:column;gap:4px}
+.heat-row{display:flex;align-items:center;gap:10px}
+input[type=range]{flex:1;accent-color:var(--cinnabar)}
+.heat-val{font-family:var(--display);font-size:26px;width:3.2em;text-align:right;color:var(--cinnabar);line-height:1}
+.heat-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.hint{font-size:12.5px;color:var(--jade)}
+
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.ing{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+.ing:hover:not(:disabled){border-color:var(--bronze)}
+.ing:disabled{opacity:.4;cursor:not-allowed}
+.ing .nm{font-weight:600;font-size:14px;display:flex;align-items:center;gap:5px}
+.ing .meta{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.tip{font-size:12px;color:var(--muted);min-height:2.8em;border-left:2px solid var(--line);padding-left:8px}
+
+.order{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;min-height:44px}
+.order li{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
+.role{font-family:var(--display);font-size:20px;color:var(--bronze);width:1.3em;text-align:center;line-height:1}
+.order .nm{flex:1;min-width:0;display:flex;align-items:center;gap:6px}
+.order .btns{display:flex;gap:2px}
+.ib{background:transparent;border:1px solid transparent;border-radius:3px;width:28px;height:28px;color:var(--muted)}
+.ib:hover:not(:disabled){border-color:var(--line);color:var(--paper)}
+.ib:disabled{opacity:.25}
+.empty{font-size:13px;color:var(--muted);padding:10px;border:1px dashed var(--line);border-radius:4px;text-align:center}
+.wx-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--panel2)}
+.wx-bar i{display:block;height:100%;transition:width .3s}
+.wx-legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.wx-legend span{display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.yy{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.yy-track{flex:1;height:6px;background:linear-gradient(90deg,var(--el-s),var(--panel2) 50%,var(--el-f));border-radius:3px;position:relative}
+.yy-track i{position:absolute;top:-4px;width:3px;height:14px;background:var(--paper);border-radius:2px;transform:translateX(-50%);transition:left .3s}
+.cost{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.cost b{color:var(--paper);font-variant-numeric:tabular-nums}
+
+.furnace-wrap{position:relative;border-radius:6px;overflow:hidden;background:#120c0a;border:1px solid var(--line)}
+canvas{display:block;width:100%;height:280px}
+.go{font-family:var(--display);font-size:28px;letter-spacing:.3em;padding:10px;border-radius:5px;border:1px solid var(--cinnabar);background:#5a1d12;color:#ffe9d6;transition:background .15s,transform .1s}
+.go:hover:not(:disabled){background:#7a2716}
+.go:active:not(:disabled){transform:translateY(1px)}
+.go:disabled{opacity:.45;cursor:not-allowed}
+.log{list-style:none;margin:0;padding:0;font-size:13.5px;display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto}
+.log li{display:flex;gap:8px}
+.log .t{font-family:var(--display);color:var(--bronze);flex:none;width:3.4em}
+.log .good{color:var(--jade)} .log .bad{color:#f08a6c} .log .boom{color:var(--cinnabar);font-weight:600}
+
+.result{border:1px solid var(--bronze);border-radius:6px;padding:14px;background:linear-gradient(180deg,#3a2a1c,var(--panel));display:flex;flex-direction:column;gap:10px}
+.result[hidden]{display:none!important}
+.pill-head{display:flex;gap:14px;align-items:center}
+.pill-orb{width:58px;height:58px;border-radius:50%;flex:none;position:relative}
+.pill-name{font-family:var(--display);font-size:34px;line-height:1.1;color:#fff0d4}
+.pill-grade{font-size:13px;color:var(--bronze);letter-spacing:.15em}
+.pill-desc{font-size:14px;color:var(--paper);margin:0}
+.pill-props{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:3px;padding:1px 7px;color:var(--muted)}
+.tag.bad{border-color:#8a3a26;color:#f08a6c}.tag.good{border-color:#3f6e5b;color:var(--jade)}
+.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.act{border:1px solid var(--line);background:var(--panel2);border-radius:4px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:0}
+.act b{font-family:var(--display);font-weight:400;font-size:22px;line-height:1.1}
+.act small{font-size:11px;color:var(--muted)}
+.act:hover:not(:disabled){border-color:var(--bronze)}
+.act.eat{border-color:var(--cinnabar)}
+.act:disabled{opacity:.4;cursor:not-allowed}
+.outcome{font-size:14.5px;border-left:3px solid var(--cinnabar);padding:4px 0 4px 10px;display:flex;flex-direction:column;gap:4px}
+.outcome p{margin:0}
+.outcome .fx{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.bottom{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.bottom{grid-template-columns:minmax(0,1fr)}}
+.codex{display:flex;flex-wrap:wrap;gap:5px}
+.codex span{font-size:13px;padding:2px 8px;border-radius:3px;background:var(--panel2);border:1px solid var(--line)}
+.codex span.unk{color:#5e4a3c}
+.side-actions{display:flex;flex-wrap:wrap;gap:6px}
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:4px;padding:6px 12px;font-size:14px}
+.btn:hover{border-color:var(--bronze)}
+.btn.danger{border-color:#7a3322}
+.death{border:1px solid var(--cinnabar);background:#2a0f0a;border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.death[hidden]{display:none!important}
+.death h3{font-family:var(--display);font-weight:400;font-size:34px;margin:0;color:var(--cinnabar)}
+.death p{margin:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--bronze);padding:8px 16px;border-radius:4px;font-size:14px;z-index:20;max-width:calc(100vw - 32px)}
+.toast[hidden]{display:none!important}
+.shake{animation:shake .5s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-2px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1>九轉丹房<small>修仙煉丹模擬</small></h1>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="death" id="death" hidden>
+    <h3 id="deathTitle">身死道消</h3>
+    <p id="deathText"></p>
+    <button class="btn" id="rebirth" type="button">轉世重修（保留丹譜）</button>
+  </div>
+
+  <div class="grid">
+    <section class="col" aria-labelledby="h-recipe">
+      <h2 id="h-recipe">丹方<span>道・法・火・爐</span></h2>
+      <div class="group"><div class="label">丹道</div><div class="chips" id="paths"></div><div class="desc" id="pathDesc"></div></div>
+      <div class="group"><div class="label">心法</div><div class="chips" id="arts"></div><div class="desc" id="artDesc"></div></div>
+      <div class="group"><div class="label">火種</div><div class="chips" id="fires"></div><div class="desc" id="fireDesc"></div></div>
+      <div class="group heat">
+        <div class="label">火候</div>
+        <div class="heat-row"><input type="range" id="heat" min="1" max="9" step="1" value="5" aria-label="火候大小"><div class="heat-val" id="heatVal">五</div></div>
+        <div class="heat-scale"><span>文火</span><span>中火</span><span>武火</span></div>
+        <div class="hint" id="heatHint"></div>
+      </div>
+      <div class="group"><div class="label">丹爐</div><div class="chips" id="furns"></div><div class="desc" id="furnDesc"></div></div>
+    </section>
+
+    <section class="col" aria-labelledby="h-shelf">
+      <h2 id="h-shelf">藥櫃<span>撳藥材加入丹爐</span></h2>
+      <div class="shelf" id="shelf"></div>
+      <div class="tip" id="ingTip">君臣佐使：第一味係君藥，應該係最猛嗰味。相鄰藥材五行相生有加成，相剋會令丹爐唔穩。</div>
+      <div class="group">
+        <div class="label" id="orderLabel">投料順序</div>
+        <ol class="order" id="order"></ol>
+      </div>
+      <div class="group">
+        <div class="label">爐中五行</div>
+        <div class="wx-bar" id="wxBar"></div>
+        <div class="wx-legend" id="wxLegend"></div>
+        <div class="yy"><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
+      </div>
+      <div class="cost"><span>藥材＋丹爐開銷</span><b id="cost">0 靈石</b></div>
+    </section>
+
+    <section class="col furnace-col" aria-labelledby="h-furn">
+      <h2 id="h-furn">丹爐<span id="furnName">青銅鼎</span></h2>
+      <div class="furnace-wrap" id="furnWrap"><canvas id="cv" aria-label="丹爐火光"></canvas></div>
+      <button class="go" id="go" type="button">開爐煉丹</button>
+      <ul class="log" id="log" aria-live="polite"></ul>
+      <div class="result" id="result" hidden>
+        <div class="pill-head">
+          <div class="pill-orb" id="pillOrb"></div>
+          <div><div class="pill-grade" id="pillGrade"></div><div class="pill-name" id="pillName"></div></div>
+        </div>
+        <p class="pill-desc" id="pillDesc"></p>
+        <div class="pill-props" id="pillProps"></div>
+        <div class="actions" id="actions">
+          <button class="act eat" id="aEat" type="button"><b>食</b><small>一啖吞落肚</small></button>
+          <button class="act" id="aTest" type="button"><b>試藥</b><small>搵師弟食先</small></button>
+          <button class="act" id="aSell" type="button"><b>賣</b><small id="sellPrice">換靈石</small></button>
+        </div>
+        <div class="outcome" id="outcome" hidden></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bottom">
+    <section class="col" aria-labelledby="h-codex">
+      <h2 id="h-codex">丹譜<span id="codexCount"></span></h2>
+      <div class="codex" id="codex"></div>
+    </section>
+    <section class="col" aria-labelledby="h-misc">
+      <h2 id="h-misc">雜務</h2>
+      <div class="side-actions">
+        <button class="btn" id="task" type="button">下山斬妖（+120 靈石，耗一年）</button>
+        <button class="btn danger" id="reset" type="button">全部重來</button>
+      </div>
+      <div class="desc" id="resetConfirm"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const rnd=Math.random;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const CN=['〇','一','二','三','四','五','六','七','八','九'];
+
+/* ---------- 五行 ---------- */
+const EL={m:{n:'金',c:'var(--el-m)',hex:'#d9c27a'},w:{n:'木',c:'var(--el-w)',hex:'#86b86b'},s:{n:'水',c:'var(--el-s)',hex:'#62a9d6'},f:{n:'火',c:'var(--el-f)',hex:'#e2583c'},e:{n:'土',c:'var(--el-e)',hex:'#b78d55'}};
+const ELK=['m','w','s','f','e'];
+const GEN={w:'f',f:'e',e:'m',m:'s',s:'w'};
+const CTRL={w:'e',e:'s',s:'f',f:'m',m:'w'};
+
+/* ---------- 資料 ---------- */
+const PATHS={
+  zheng:{n:'正道金丹',d:'五行調和為上，最忌毒性。修為穩步上升。',shift:0,pow:1},
+  mo:{n:'魔道血丹',d:'以火煉血，陽極則強，宜武火。藥力猛但易生心魔。',shift:2,pow:1.4},
+  du:{n:'毒道蠱丹',d:'毒即是藥，越毒越好。毒性唔會令丹爐不穩。',shift:0,pow:0.8},
+  fo:{n:'佛門舍利',d:'重土金，陰陽要平衡，宜文火。可消心魔。',shift:-2,pow:0.9},
+  yi:{n:'醫道回春',d:'重木水，延壽解毒。修為加得少。',shift:-1,pow:0.5}
+};
+const ARTS={
+  taishang:{n:'太上清靜經',d:'心如止水，丹爐好穩，食丹少啲心魔。藥力略減。',stab:18,pow:-5},
+  jiuzhuan:{n:'九轉玄功',d:'九轉歸一，藥力加成。',stab:0,pow:15},
+  tianmo:{n:'天魔噬心訣',d:'藥力暴增，但丹爐同你個心都會唔穩。',stab:-20,pow:30},
+  wuwei:{n:'無為心法',d:'順其自然，相剋懲罰減半，可以駕馭冰火同爐。',stab:5,pow:0},
+  shenshi:{n:'丹鼎神識',d:'神識入爐，感應到理想火候；火候偏差影響減半。',stab:5,pow:0}
+};
+const FIRES={
+  fan:{n:'凡火',el:'f',mul:.6,stab:8,q:-10,yy:0,c:['#ffc46b','#d9632e'],d:'灶頭火。穩陣，但最多只煉到靈品。',cap:2},
+  difei:{n:'地肺火',el:'e',mul:1,stab:4,q:0,yy:0,c:['#ffd27a','#b8622b'],d:'地脈深處之火，中規中矩。'},
+  sanmei:{n:'三昧真火',el:'f',mul:1.3,stab:-4,q:12,yy:1,c:['#fff2ac','#ff6a2b'],d:'精氣神所化，提升丹品。'},
+  jiuyou:{n:'九幽冥火',el:'s',mul:1.2,stab:-6,q:8,yy:-2,c:['#c8f4ff','#3f6fd9'],d:'至陰之火。魔道、毒道用佢有額外加成。'},
+  zixiao:{n:'紫霄雷火',el:'m',mul:1.5,stab:-15,q:22,yy:2,c:['#f6e8ff','#9a5cf0'],d:'天雷所化，丹品大升，但好易炸爐。'},
+  fenghuang:{n:'鳳凰涅槃火',el:'f',mul:1.4,stab:-8,q:16,yy:2,c:['#fff7c4','#ff3b2b'],d:'炸爐時有三成機會浴火重生，凝出殘丹。'}
+};
+const FURN={
+  wa:{n:'破瓦罐',cap:3,stab:-15,q:-6,cost:0,d:'屋企執返嚟。免費，但最多放三味，好易爆。'},
+  qingtong:{n:'青銅鼎',cap:4,stab:0,q:0,cost:10,d:'門派標配。放四味。'},
+  hulu:{n:'紫金葫蘆',cap:5,stab:6,q:4,cost:30,d:'放五味，水性藥材藥力加成。'},
+  bagua:{n:'八卦爐',cap:6,stab:10,q:6,cost:45,d:'放六味，五行齊全有加成，可壓制冰火。'},
+  jiulong:{n:'九龍鼎',cap:7,stab:15,q:12,cost:90,d:'放七味。九龍護爐，又穩又強，租金貴。'}
+};
+const ING={
+  renshen:{n:'百年人參',el:'w',pot:3,yy:1,tox:0,p:20,d:'補氣基本款。'},
+  lingzhi:{n:'靈芝',el:'w',pot:4,yy:0,tox:0,p:35,d:'安神養元。'},
+  heshouwu:{n:'千年何首烏',el:'w',pot:6,yy:-1,tox:0,p:90,d:'已經識少少講嘢。同人參、靈芝一齊有驚喜。'},
+  duanchang:{n:'斷腸草',el:'w',pot:5,yy:-1,tox:8,p:30,d:'劇毒。毒道至寶。'},
+  mantuo:{n:'曼陀羅花',el:'w',pot:4,yy:-2,tox:5,p:30,d:'令人產生幻覺。據講同斷腸草有緣。'},
+  chiyan:{n:'赤焰果',el:'f',pot:4,yy:2,tox:1,p:40,d:'食落口會噴火。'},
+  zhusha:{n:'朱砂',el:'f',pot:3,yy:1,tox:3,p:15,d:'煉丹常用，帶少少毒。'},
+  xueputi:{n:'血菩提',el:'f',pot:7,yy:2,tox:2,p:220,d:'吸血而生。據講同龍涎香相輔相成。'},
+  qilin:{n:'火麒麟角',el:'f',pot:8,yy:3,tox:1,p:260,d:'至陽之物。千祈唔好貼住冰嘢放。'},
+  hanbing:{n:'寒冰魄',el:'s',pot:5,yy:-3,tox:0,p:70,d:'萬年寒冰之精。'},
+  tianyi:{n:'天一真水',el:'s',pot:7,yy:-2,tox:0,p:180,d:'天地第一滴水。'},
+  longxian:{n:'龍涎香',el:'s',pot:6,yy:1,tox:0,p:150,d:'龍嘅口水，好香。'},
+  mengpo:{n:'孟婆湯渣',el:'s',pot:4,yy:-3,tox:2,p:50,d:'奈何橋邊執返嚟。食咗會唔記得嘢。'},
+  xuantu:{n:'九轉玄土',el:'e',pot:5,yy:0,tox:0,p:60,d:'厚德載物。'},
+  dilong:{n:'地龍膽',el:'e',pot:3,yy:-1,tox:2,p:25,d:'其實即係蚯蚓膽。'},
+  yaodan:{n:'妖獸內丹',el:'e',pot:6,yy:0,tox:3,p:120,d:'殺妖得來，帶妖氣，食多會生心魔。'},
+  xirang:{n:'息壤',el:'e',pot:9,yy:0,tox:0,p:400,d:'自己會生長嘅神土，大大穩定丹爐。'},
+  xingchen:{n:'星辰鐵砂',el:'m',pot:6,yy:0,tox:1,p:110,d:'天外隕鐵磨成粉。'},
+  gengjin:{n:'庚金精魄',el:'m',pot:8,yy:1,tox:0,p:300,d:'鋒銳無匹，食咗講嘢都利啲。'},
+  jitang:{n:'隔夜雞湯',el:'e',pot:1,yy:0,tox:0,p:2,d:'阿媽琴晚煲嘅。'}
+};
+const REALMS=['煉氣','築基','金丹','元嬰','化神','渡劫','飛升'];
+const LIFE=[120,220,500,1000,2000,4000,99999];
+const GRADES=['廢丹','凡品','靈品','地品','天品','仙品'];
+const DANWEN=[0,0,2,5,8,9];
+const NAMES={
+  zheng:{m:'破障金丹',w:'長春丹',s:'清心玉露丹',f:'純陽丹',e:'築基丹'},
+  mo:{m:'血煞丹',w:'噬魂丹',s:'玄陰魔丹',f:'焚血丹',e:'屍傀丹'},
+  du:{m:'蝕骨丹',w:'千蛛萬毒丹',s:'化血毒水丹',f:'烈焰蠱丹',e:'腐心丹'},
+  fo:{m:'金剛舍利',w:'菩提子丹',s:'淨瓶甘露丹',f:'明王丹',e:'須彌丹'},
+  yi:{m:'續骨丹',w:'回春丹',s:'九轉還魂丹',f:'活血丹',e:'養元丹'}
+};
+const SPECIAL=['冰火九重天丹','三才造化丹','龍血丹','斷魂丹','忘情丹','雞湯丹','生丹','焦炭丹','廢丹'];
+const ALL_PILLS=[...Object.values(NAMES).flatMap(o=>ELK.map(k=>o[k])),...SPECIAL];
+
+/* ---------- 存檔 ---------- */
+const KEY='dan-sim-v1';
+function newPlayer(){return{realm:0,cult:0,tox:0,demon:0,age:16,lifeBonus:0,stones:600,alive:true,brews:0};}
+let save={player:newPlayer(),codex:[],shidi:0,lives:1};
+try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.player)save=Object.assign(save,s);}}catch(e){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
+const P=()=>save.player;
+
+/* ---------- 選擇狀態 ---------- */
+const cfg={path:'zheng',art:'taishang',fire:'difei',heat:5,furn:'qingtong',order:['renshen','lingzhi','xuantu']};
+let busy=false,current=null;
+
+/* ---------- 渲染：丹方 ---------- */
+function chipGroup(el,data,key,descEl,extra){
+  el.innerHTML='';
+  Object.entries(data).forEach(([id,o])=>{
+    const b=document.createElement('button');b.type='button';b.className='chip';
+    b.textContent=o.n+(extra?extra(o):'');b.setAttribute('aria-pressed',cfg[key]===id);
+    b.onclick=()=>{if(busy)return;cfg[key]=id;if(key==='furn')trimOrder();renderAll();};
+    el.appendChild(b);
+  });
+  descEl.textContent=data[cfg[key]].d;
+}
+function trimOrder(){const cap=FURN[cfg.furn].cap;if(cfg.order.length>cap){cfg.order=cfg.order.slice(0,cap);toast('丹爐放唔落咁多，後面嘅藥材拎返出嚟');}}
+function renderRecipe(){
+  chipGroup($('paths'),PATHS,'path',$('pathDesc'));
+  chipGroup($('arts'),ARTS,'art',$('artDesc'));
+  chipGroup($('fires'),FIRES,'fire',$('fireDesc'));
+  chipGroup($('furns'),FURN,'furn',$('furnDesc'),o=>' · '+o.cap+'味');
+  $('furnName').textContent=FURN[cfg.furn].n+'（租金 '+FURN[cfg.furn].cost+' 靈石）';
+  $('heatVal').textContent=CN[cfg.heat]+(cfg.heat<=3?' 文':cfg.heat>=7?' 武':' 中');
+  const a=analyse();
+  $('heatHint').textContent=cfg.art==='shenshi'&&cfg.order.length?('神識感應：此爐火候宜「'+CN[a.ideal]+'」左右。'):'';
+}
+
+/* ---------- 渲染：藥櫃與順序 ---------- */
+function renderShelf(){
+  const shelf=$('shelf');shelf.innerHTML='';
+  const full=cfg.order.length>=FURN[cfg.furn].cap;
+  Object.entries(ING).forEach(([id,o])=>{
+    const b=document.createElement('button');b.type='button';b.className='ing';b.disabled=full||busy;
+    b.innerHTML='<span class="nm"><span class="dot" style="background:'+EL[o.el].c+'"></span>'+o.n+'</span><span class="meta">'+EL[o.el].n+' · 藥力'+o.pot+(o.tox?' · 毒'+o.tox:'')+' · '+o.p+'石</span>';
+    b.onclick=()=>{if(cfg.order.length<FURN[cfg.furn].cap){cfg.order.push(id);renderAll();}};
+    b.onmouseenter=b.onfocus=()=>{$('ingTip').textContent=o.n+'：'+o.d+'（'+(o.yy>0?'陽':o.yy<0?'陰':'中和')+(o.yy?Math.abs(o.yy):'')+'）';};
+    shelf.appendChild(b);
+  });
+  const ol=$('order');ol.innerHTML='';
+  $('orderLabel').textContent='投料順序（'+cfg.order.length+' / '+FURN[cfg.furn].cap+'）';
+  if(!cfg.order.length){ol.innerHTML='<li class="empty" style="justify-content:center">爐入面乜都冇，喺上面揀藥材</li>';}
+  const n=cfg.order.length;
+  cfg.order.forEach((id,i)=>{
+    const o=ING[id];const role=i===0?'君':i===1?'臣':(i===n-1&&n>2)?'使':'佐';
+    const li=document.createElement('li');
+    li.innerHTML='<span class="role">'+role+'</span><span class="nm"><span class="dot" style="background:'+EL[o.el].c+'"></span>'+o.n+'</span><span class="btns"><button class="ib" type="button" aria-label="上移" '+(i===0||busy?'disabled':'')+'>↑</button><button class="ib" type="button" aria-label="下移" '+(i===n-1||busy?'disabled':'')+'>↓</button><button class="ib" type="button" aria-label="移除" '+(busy?'disabled':'')+'>✕</button></span>';
+    const [u,d,x]=li.querySelectorAll('button');
+    u.onclick=()=>{[cfg.order[i-1],cfg.order[i]]=[cfg.order[i],cfg.order[i-1]];renderAll();};
+    d.onclick=()=>{[cfg.order[i+1],cfg.order[i]]=[cfg.order[i],cfg.order[i+1]];renderAll();};
+    x.onclick=()=>{cfg.order.splice(i,1);renderAll();};
+    ol.appendChild(li);
+  });
+  const a=analyse();
+  const tot=ELK.reduce((s,k)=>s+a.el[k],0)||1;
+  $('wxBar').innerHTML=ELK.map(k=>'<i style="width:'+(a.el[k]/tot*100)+'%;background:'+EL[k].c+'"></i>').join('');
+  $('wxLegend').innerHTML=ELK.map(k=>'<span><span class="dot" style="background:'+EL[k].c+'"></span>'+EL[k].n+' '+Math.round(a.el[k]/tot*100)+'%</span>').join('');
+  $('yyNeedle').style.left=clamp(50+a.yy*4,3,97)+'%';
+  $('cost').textContent=costOf()+' 靈石（你有 '+P().stones+'）';
+}
+function costOf(){return cfg.order.reduce((s,id)=>s+ING[id].p,0)+FURN[cfg.furn].cost;}
+
+/* ---------- 核心演算 ---------- */
+function analyse(){
+  const Pa=PATHS[cfg.path],A=ARTS[cfg.art],F=FIRES[cfg.fire],K=FURN[cfg.furn];
+  const items=cfg.order.map(id=>Object.assign({id},ING[id]));
+  const n=items.length;
+  const el={m:0,w:0,s:0,f:0,e:0};
+  const notes=[];const flags={};
+  let pot=0,yy=0,tox=0,syn=0,stab=0,demon=0;
+  items.forEach((it,i)=>{
+    let wt=i===0?1.5:i===1?1.2:(i===n-1&&n>2)?.8:1;
+    if(cfg.furn==='hulu'&&it.el==='s')wt*=1.3;
+    el[it.el]+=it.pot*wt;pot+=it.pot*wt;yy+=it.yy;tox+=it.tox;
+  });
+  if(n>1){
+    const maxPot=Math.max(...items.map(i=>i.pot));
+    if(items[0].pot<maxPot){syn-=12;notes.push(['bad','君臣失序：最猛嗰味冇做君藥']);}
+    else{syn+=6;notes.push(['good','君藥坐鎮，藥性有主']);}
+  }
+  let gen=0,ctl=0;
+  for(let i=0;i<n-1;i++){
+    const a=items[i].el,b=items[i+1].el;
+    if(GEN[a]===b){gen++;syn+=9;}
+    else if(CTRL[a]===b||CTRL[b]===a){ctl++;syn-=cfg.art==='wuwei'?5:11;stab-=cfg.art==='wuwei'?3:7;}
+  }
+  if(gen)notes.push(['good','五行相生 ×'+gen]);
+  if(ctl)notes.push(['bad','五行相剋 ×'+ctl]);
+  const has=id=>cfg.order.includes(id);
+  if(has('duanchang')&&has('mantuo')){flags.soul=true;tox+=6;if(cfg.path==='du'){syn+=22;notes.push(['good','斷腸草配曼陀羅：斷魂之毒成形'])}else{stab-=10;notes.push(['bad','斷腸草配曼陀羅：毒氣攻爐'])}}
+  for(let i=0;i<n-1;i++){const p=[items[i].id,items[i+1].id];if(p.includes('hanbing')&&p.includes('qilin')){flags.icefire=true;}}
+  if(flags.icefire){
+    if(cfg.art==='wuwei'||cfg.furn==='bagua'){syn+=38;flags.icefireOk=true;notes.push(['good','冰火同爐，陰陽互濟'])}
+    else{stab-=38;notes.push(['bad','寒冰魄貼住火麒麟角，冰火相沖！'])}
+  }
+  if(has('renshen')&&has('lingzhi')&&has('heshouwu')){flags.sancai=true;syn+=20;notes.push(['good','人參、靈芝、何首烏：天地人三才齊聚'])}
+  if(has('longxian')&&has('xueputi')){flags.longxue=true;syn+=15;yy+=2;notes.push(['good','龍涎香引血菩提：龍血之氣'])}
+  if(has('xirang')){stab+=20;notes.push(['good','息壤鎮爐'])}
+  if(has('mengpo'))flags.meng=true;
+  if(has('yaodan'))demon+=6*cfg.order.filter(x=>x==='yaodan').length;
+  if(n&&cfg.order.every(x=>x==='jitang'))flags.chicken=true;
+  // 火
+  el[F.el]+=cfg.heat*F.mul*1.1;yy+=F.yy;
+  // 丹道契合
+  const vals=ELK.map(k=>el[k]);const mx=Math.max(...vals),tot=vals.reduce((a,b)=>a+b,0)||1;
+  const present=ELK.filter(k=>el[k]>=2.5).length;
+  let fit=0;
+  switch(cfg.path){
+    case'zheng':fit=present*6-tox*2.5;break;
+    case'mo':fit=(el.f*.7+Math.max(yy,0)*2.5)-Math.max(-yy,0)*2;demon+=12;break;
+    case'du':fit=tox*3.2;break;
+    case'fo':fit=(el.e+el.m)*.6+8-Math.abs(yy)*3.5;demon-=20;break;
+    case'yi':fit=(el.w+el.s)*.6-tox*3;break;
+  }
+  if(cfg.fire==='jiuyou'&&(cfg.path==='mo'||cfg.path==='du'))fit+=10;
+  if(cfg.furn==='bagua'&&present>=4){fit+=10;notes.push(['good','八卦爐：五行流轉'])}
+  fit=clamp(fit,-30,50);
+  if(cfg.art==='tianmo')demon+=12;if(cfg.art==='taishang')demon-=6;
+  // 火候
+  const avg=n?items.reduce((s,i)=>s+i.pot,0)/n:0;
+  const ideal=clamp(Math.round(2+avg*.55)+Pa.shift,1,9);
+  const dev=cfg.heat-ideal;const half=cfg.art==='shenshi'?.5:1;
+  let heatQ=0;
+  if(dev>0){stab-=dev*9*half;heatQ-=dev*4*half;}
+  if(dev<0){heatQ-=Math.abs(dev)*8*half;}
+  const Q=pot*2.2+syn+fit+A.pow+F.q+K.q+heatQ;
+  const S=55+K.stab+A.stab+F.stab+stab-Math.abs(yy)*2.5-(cfg.path==='du'?0:tox*1.2);
+  const boom=n?clamp((45-S)*2,0,95):0;
+  const dom=ELK.reduce((a,k)=>el[k]>el[a]?k:a,'m');
+  return{el,yy,tox,Q,S,boom,ideal,dev,dom,notes,flags,demon,n,mx,tot};
+}
+
+/* ---------- 爐火動畫 ---------- */
+const cv=$('cv'),ctx=cv.getContext('2d');
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W=0,H=0,DPR=1,parts=[],glow=0,glowT=0,flash=0,brewing=false,smoke=[];
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+window.addEventListener('resize',resize);
+function drawFurnace(t){
+  const F=FIRES[cfg.fire];const cx=W/2,base=H-34;
+  ctx.clearRect(0,0,W,H);
+  // 背景光暈
+  const heat=cfg.heat/9;
+  const g=ctx.createRadialGradient(cx,base,10,cx,base,W*.7);
+  g.addColorStop(0,hexA(F.c[1],.25+heat*.25+glow*.3));g.addColorStop(1,'rgba(18,12,10,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // 火焰粒子
+  const rate=reduce?1:Math.round(2+heat*6+(brewing?6:0));
+  for(let i=0;i<rate;i++)parts.push({x:cx+(rnd()-.5)*110,y:base+6,vx:(rnd()-.5)*.6,vy:-(1.2+rnd()*2.2)*(.6+heat),life:1,s:6+rnd()*10*(.5+heat)});
+  ctx.globalCompositeOperation='lighter';
+  parts=parts.filter(p=>p.life>0);
+  parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=.03+rnd()*.02;p.s*=.97;
+    const gg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.s);gg.addColorStop(0,hexA(F.c[0],.8*p.life));gg.addColorStop(1,hexA(F.c[1],0));
+    ctx.fillStyle=gg;ctx.beginPath();ctx.arc(p.x,p.y,p.s,0,7);ctx.fill();});
+  ctx.globalCompositeOperation='source-over';
+  // 鼎
+  const bw=Math.min(190,W*.5),top=base-150,body=base-28;
+  ctx.fillStyle='#2b1d14';
+  // 腳
+  [[-.32,1],[.32,1],[0,.9]].forEach(([dx,a])=>{ctx.globalAlpha=a;ctx.fillRect(cx+dx*bw-7,body-4,14,34);});
+  ctx.globalAlpha=1;
+  // 身
+  const bodyG=ctx.createLinearGradient(cx-bw/2,0,cx+bw/2,0);
+  bodyG.addColorStop(0,'#5a4128');bodyG.addColorStop(.45,'#a07a45');bodyG.addColorStop(.55,'#b88f52');bodyG.addColorStop(1,'#4a3420');
+  ctx.fillStyle=bodyG;ctx.beginPath();
+  ctx.moveTo(cx-bw/2,top+26);ctx.quadraticCurveTo(cx-bw/2-6,body,cx-bw*.36,body);ctx.lineTo(cx+bw*.36,body);ctx.quadraticCurveTo(cx+bw/2+6,body,cx+bw/2,top+26);ctx.closePath();ctx.fill();
+  // 口
+  ctx.fillStyle='#3a2918';ctx.fillRect(cx-bw/2-8,top+14,bw+16,14);
+  // 耳
+  ctx.strokeStyle='#8a6a3c';ctx.lineWidth=7;
+  [[-1],[1]].forEach(([s])=>{ctx.beginPath();ctx.moveTo(cx+s*bw*.36,top+14);ctx.lineTo(cx+s*bw*.36,top-14);ctx.lineTo(cx+s*bw*.18,top-14);ctx.lineTo(cx+s*bw*.18,top+14);ctx.stroke();});
+  // 紋
+  ctx.strokeStyle='rgba(40,25,14,.7)';ctx.lineWidth=2;
+  for(let k=0;k<3;k++){ctx.beginPath();ctx.moveTo(cx-bw*.42,top+46+k*16);ctx.lineTo(cx+bw*.42,top+46+k*16);ctx.stroke();}
+  ctx.font='28px '+getComputedStyle(document.body).getPropertyValue('--display');ctx.fillStyle='rgba(30,18,10,.75)';ctx.textAlign='center';ctx.fillText('丹',cx,top+100);
+  // 內光
+  if(glow>0){ctx.fillStyle=hexA(F.c[0],glow*.6);ctx.fillRect(cx-bw/2-8,top+14,bw+16,6);}
+  // 煙
+  if(brewing&&!reduce&&rnd()<.4)smoke.push({x:cx+(rnd()-.5)*bw*.6,y:top+10,r:6,life:1});
+  smoke=smoke.filter(s=>s.life>0);
+  smoke.forEach(s=>{s.y-=.8;s.x+=Math.sin((s.y+t/200))*.4;s.r+=.35;s.life-=.012;ctx.fillStyle='rgba(236,223,200,'+(s.life*.18)+')';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fill();});
+  if(flash>0){ctx.fillStyle='rgba(255,230,190,'+flash+')';ctx.fillRect(0,0,W,H);flash-=.04;}
+  if(brewing){glowT+=.06;glow=.5+Math.sin(glowT)*.3;}else glow=Math.max(0,glow-.02);
+}
+function hexA(h,a){const n=parseInt(h.slice(1),16);return'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+clamp(a,0,1)+')';}
+function loop(t){drawFurnace(t||0);requestAnimationFrame(loop);}
+
+/* ---------- 煉丹 ---------- */
+const TURN=['第一轉','第二轉','第三轉','第四轉','第五轉','第六轉','第七轉','第八轉','第九轉'];
+function log(t,msg,cls){const li=document.createElement('li');li.innerHTML='<span class="t">'+t+'</span><span class="'+(cls||'')+'">'+msg+'</span>';$('log').appendChild(li);$('log').scrollTop=1e6;}
+function brew(){
+  if(busy||!P().alive)return;
+  if(!cfg.order.length){toast('爐入面未有藥材');return;}
+  const c=costOf();if(P().stones<c){toast('靈石唔夠（要 '+c+'），去下山斬妖賺返啲先');return;}
+  P().stones-=c;P().age+=1;P().brews++;
+  busy=true;brewing=true;current=null;$('result').hidden=true;$('log').innerHTML='';renderAll();
+  const a=analyse();const F=FIRES[cfg.fire];
+  const exploded=rnd()*100<a.boom;
+  const boomTurn=exploded?3+Math.floor(rnd()*6):99;
+  a.notes.forEach(([c,m])=>log('爐前',m,c));
+  let i=0;
+  const step=()=>{
+    if(i===boomTurn){finish(a,true);return;}
+    if(i>=9){finish(a,false);return;}
+    log(TURN[i],turnMsg(a,i,F),'');
+    i++;setTimeout(step,reduce?120:360);
+  };
+  setTimeout(step,reduce?100:400);
+}
+function turnMsg(a,i,F){
+  const pool=[];
+  if(i===0)pool.push('藥材入爐，'+F.n+'燃起');
+  if(a.dev>=2)pool.push('藥香帶焦味','爐壁燒到發紅','火太猛，藥液滾到彈出嚟');
+  if(a.dev<=-2)pool.push('藥材仲未化開','爐溫唔夠，藥性凝唔埋','藥液溫吞吞咁');
+  if(a.S<35)pool.push('爐身開始震動','丹爐發出悲鳴','爐蓋自己彈咗一下');
+  if(a.Q>80)pool.push('丹香四溢','爐頂隱隱有霞光','有丹紋喺藥液入面浮現');
+  if(cfg.fire==='zixiao')pool.push('雷光纏住爐身');
+  if(cfg.fire==='jiuyou')pool.push('爐邊結咗層薄霜');
+  if(cfg.art==='tianmo')pool.push('你聽到心底有把聲叫你加大火');
+  if(a.flags.icefire)pool.push(a.flags.icefireOk?'冰火二氣盤旋交融':'爐內一邊結冰一邊沸騰');
+  pool.push('藥性慢慢融合','你運轉心法，以神識引導藥力','藥液轉咗色');
+  if(i===8)return'丹成在即，收火！';
+  return pool[Math.floor(rnd()*pool.length)];
+}
+function finish(a,exploded){
+  brewing=false;
+  if(exploded){
+    flash=1;const w=$('furnWrap');w.classList.remove('shake');void w.offsetWidth;w.classList.add('shake');
+    log('爆','轟！丹爐炸咗！','boom');
+    if(cfg.fire==='fenghuang'&&rnd()<.3){
+      log('涅槃','鳳凰火捲住殘渣，重新凝成一粒丹','good');
+      current=makePill(a,true);
+    }else{
+      const hurt=Math.round(5+rnd()*10);P().cult=Math.max(0,P().cult-hurt);P().tox=clamp(P().tox+5,0,100);
+      log('後果','眉毛燒剩一半，修為 −'+hurt+'%，吸咗啲毒煙','bad');
+      busy=false;checkLife();persist();renderAll();return;
+    }
+  }else current=makePill(a,false);
+  log('開爐','得到：'+current.name+'（'+current.gradeName+'）','good');
+  if(!save.codex.includes(current.name)){save.codex.push(current.name);toast('丹譜新增：'+current.name);}
+  busy=false;checkLife();persist();renderAll();showPill();
+}
+function makePill(a,phoenix){
+  let Q=a.Q*(.88+rnd()*.24);
+  let g=Q<15?0:Q<40?1:Q<65?2:Q<90?3:Q<120?4:5;
+  if(FIRES[cfg.fire].cap!==undefined)g=Math.min(g,FIRES[cfg.fire].cap);
+  if(cfg.furn==='wa')g=Math.min(g,3);
+  if(phoenix)g=Math.max(1,g-1);
+  let kind='normal',name;
+  if(a.flags.chicken){kind='chicken';name='雞湯丹';g=1;}
+  else if(g===0){kind='waste';name='廢丹';}
+  else if(a.dev<=-3){kind='raw';name='生丹';g=Math.min(g,1);}
+  else if(a.dev>=3){kind='burnt';name='焦炭丹';g=Math.min(g,1);}
+  else if(a.flags.icefireOk){name='冰火九重天丹';g=Math.max(g,3);}
+  else if(a.flags.sancai&&cfg.path!=='du'&&cfg.path!=='mo'){name='三才造化丹';}
+  else if(a.flags.longxue){name='龍血丹';}
+  else if(a.flags.soul&&cfg.path==='du'){name='斷魂丹';}
+  else if(a.flags.meng){kind='meng';name='忘情丹';}
+  else name=NAMES[cfg.path][a.dom];
+  const desc=pillDesc(kind,g,a);
+  return{name,kind,grade:g,gradeName:GRADES[g],Q,path:cfg.path,dom:a.dom,tox:a.tox+(kind==='burnt'?6:0)+(kind==='waste'?8:0),yy:a.yy,demon:a.demon,
+    flags:Object.assign({},a.flags),art:cfg.art,desc,colors:FIRES[cfg.fire].c,elHex:EL[a.dom].hex};
+}
+function pillDesc(kind,g,a){
+  if(kind==='chicken')return'一粒啡啡黃黃、有陣雞湯味嘅丹。完全感受唔到任何靈氣，但好暖。';
+  if(kind==='waste')return'一舊黑色不明物體。用手指督一督，佢碎咗。';
+  if(kind==='raw')return'火候唔夠，藥材都未化開，咬落去仲有渣。';
+  if(kind==='burnt')return'火太猛，成粒燶晒，聞落似燒肉燶咗嗰陣味。';
+  if(kind==='meng')return'丹身灰白，帶一陣奈何橋邊嘅霧氣。望耐咗會唔記得自己望緊乜。';
+  const adj=['','丹身粗糙，略有藥香。','丹身圓潤，靈氣流轉。','丹紋隱現，有地脈之氣。','丹紋璀璨，開爐時引動天象。','九道丹紋繞身，丹香傳遍十里，天降異象。'][g];
+  const flav={zheng:'氣息中正平和。',mo:'表面有血絲流動，隱隱傳來低語。',du:'一陣甜甜腥腥嘅味，旁邊隻蚊跌咗落地。',fo:'散發淡淡金光，有梵唱迴響。',yi:'清香撲鼻，聞一聞都覺得精神咗。'}[cfg.path];
+  return adj+flav;
+}
+function showPill(){
+  const p=current;if(!p)return;
+  $('result').hidden=false;$('outcome').hidden=true;
+  $('pillName').textContent=p.name;
+  $('pillGrade').textContent=p.gradeName+(DANWEN[p.grade]?' · '+CN[DANWEN[p.grade]]+'紋':'')+' · '+PATHS[p.path].n;
+  $('pillDesc').textContent=p.desc;
+  $('pillOrb').style.background='radial-gradient(circle at 35% 30%,#fff8,'+p.elHex+' 45%,#0008)';
+  $('pillOrb').style.boxShadow=p.grade>=3?'0 0 '+(p.grade*7)+'px '+p.elHex:'none';
+  const tags=[];
+  tags.push(['', EL[p.dom].n+'屬']);
+  if(p.tox>=6)tags.push(['bad','毒性 '+Math.round(p.tox)]);
+  if(Math.abs(p.yy)>=6)tags.push(['bad',p.yy>0?'陽氣過盛':'陰氣過盛']);
+  if(p.demon>=10)tags.push(['bad','帶魔氣']);
+  if(p.demon<=-10)tags.push(['good','清心']);
+  if(p.path==='yi'&&p.grade>0)tags.push(['good','延壽']);
+  $('pillProps').innerHTML=tags.map(([c,t])=>'<span class="tag '+c+'">'+t+'</span>').join('');
+  $('sellPrice').textContent='值 '+sellValue(p)+' 靈石';
+  setActs(true);
+}
+function setActs(on){['aEat','aTest','aSell'].forEach(id=>$(id).disabled=!on||!P().alive);}
+function sellValue(p){let v=[1,30,90,250,700,2000][p.grade];if(p.path==='mo'||p.path==='du')v*=1.3;if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;return Math.round(v);}
+
+/* ---------- 食丹後果 ---------- */
+function effects(p,realm){
+  const e={cult:0,tox:0,demon:0,life:0,risk:0,special:''};
+  let pow=p.Q*PATHS[p.path].pow*(p.grade>=1?1:.2)/(1+realm*.6);
+  if(p.kind==='raw')pow*=.4;if(p.kind==='burnt')pow*=.3;if(p.kind==='chicken')pow=0;if(p.kind==='waste')pow=0;
+  if(p.art==='jiuzhuan')pow*=1.1;
+  e.cult=Math.round(pow*.9);
+  e.tox=Math.round(p.path==='du'?p.tox*4:p.path==='yi'?-15-p.grade*3:p.tox*2.5);
+  if(p.path!=='yi')e.tox=Math.max(e.tox,0);
+  e.demon=Math.round(p.demon+(Math.abs(p.yy)>=6?6:0));
+  if(p.path==='yi'&&p.grade>0)e.life=p.grade*12;
+  if(p.path==='du')e.life=-5;
+  if(p.name==='三才造化丹')e.life+=30;
+  if(p.name==='龍血丹')e.cult=Math.round(e.cult*1.3);
+  const over=p.grade-realm-1;
+  e.risk=over>0?clamp(over*22+(p.path==='mo'?10:0),0,95):0;
+  if(p.kind==='meng')e.special='meng';
+  if(p.kind==='chicken')e.special='chicken';
+  return e;
+}
+function eat(){
+  const p=current;if(!p||!P().alive)return;
+  const pl=P();const e=effects(p,pl.realm);
+  const lines=[];
+  if(e.risk&&rnd()*100<e.risk){
+    lines.push(['虛不受補！藥力太猛，經脈承受唔住……','']);
+    endLife('爆體而亡','你食咗一粒'+p.gradeName+'嘅'+p.name+'，以'+REALMS[pl.realm]+'期嘅身體承受唔住，「嘭」一聲化成一團血霧。');
+    outcome(lines,'');current=null;setActs(false);persist();renderAll();return;
+  }
+  if(e.risk)lines.push(['藥力狂暴，幾乎撐爆經脈，好彩頂住咗。']);
+  if(e.special==='chicken')lines.push(['一陣暖流入胃，你諗起阿媽。之後肚屙咗三日。修為冇變，但心境平和咗。']);
+  if(e.special==='meng'){lines.push(['你突然唔記得自己點解喺度。心魔散晒，但修為都唔見咗少少。']);e.demon=-999;e.cult=-15;}
+  if(p.kind==='raw')lines.push(['咬到一舊未煮熟嘅人參，肚痛咗半日。']);
+  if(p.kind==='burnt')lines.push(['成口炭味，三日都散唔去，師妹見到你都行開。']);
+  if(p.kind==='waste')lines.push(['你吞咗舊黑色嘢落肚……之後成晚瀉。']);
+  if(p.path==='mo'&&p.grade>=2)lines.push(['一股暴戾嘅力量湧入丹田，你忍唔住笑咗出聲。']);
+  if(p.path==='fo'&&p.grade>=2)lines.push(['耳邊響起梵唱，心境一片清明。']);
+  if(p.path==='du'&&p.grade>=2)lines.push(['毒力遊走經脈，痛到你喊，但痛完之後真係強咗。']);
+  if(p.path==='yi'&&p.grade>=2)lines.push(['白頭髮黑返幾條，皮膚滑咗。']);
+  if(p.path==='zheng'&&p.grade>=2)lines.push(['靈氣溫和咁擴散全身，好似浸溫泉。']);
+  const before=pl.realm;
+  pl.cult+=e.cult;pl.tox=clamp(pl.tox+e.tox,0,200);pl.demon=clamp(pl.demon+e.demon,0,200);pl.lifeBonus+=e.life;
+  if(pl.cult<0)pl.cult=0;
+  while(pl.cult>=100&&pl.realm<6){pl.cult-=100;pl.realm++;}
+  if(pl.realm>before){lines.push(['轟！瓶頸破開，你突破到「'+REALMS[pl.realm]+'」！','good']);}
+  if(e.special==='meng'){$('log').innerHTML='';}
+  const fx='修為 '+sign(e.cult)+'%　毒素 '+sign(e.special==='meng'?e.tox:e.tox)+'　心魔 '+(e.special==='meng'?'清零':sign(e.demon))+(e.life?'　壽元 '+sign(e.life)+' 年':'');
+  current=null;setActs(false);
+  outcome(lines,fx);
+  checkLife();persist();renderAll();
+}
+function sign(n){return(n>=0?'+':'')+Math.round(n);}
+function outcome(lines,fx){
+  const o=$('outcome');o.hidden=false;
+  o.innerHTML=lines.map(([t,c])=>'<p'+(c?' class="'+c+'"':'')+'>'+t+'</p>').join('')+(fx?'<p class="fx">'+fx+'</p>':'');
+}
+function test(){
+  const p=current;if(!p)return;
+  const e=effects(p,0);const mine=effects(p,P().realm);
+  const lines=[];
+  if(e.risk&&rnd()*100<e.risk){save.shidi++;lines.push(['師弟一食落去，七孔噴出彩虹色嘅光，當場仙逝。（第 '+save.shidi+' 位師弟）']);}
+  else if(p.kind==='chicken')lines.push(['師弟話：「師兄，呢個咪雞湯囉。」']);
+  else if(p.kind==='waste'||p.kind==='burnt')lines.push(['師弟成晚瀉，第二朝話要轉門派。']);
+  else if(p.path==='mo')lines.push(['師弟雙眼發紅，追住隻雞斬咗成個時辰。']);
+  else if(p.path==='du')lines.push([e.tox>20?'師弟塊面轉晒綠色，但人仲喺度。':'師弟話有少少麻，冇乜事。']);
+  else if(p.kind==='meng')lines.push(['師弟問你：「你係邊位？」']);
+  else lines.push([e.cult>30?'師弟成個人發光，即場突破！佢多謝你。':'師弟話：「似乎有啲效，又似乎冇。」']);
+  lines.push(['根據師弟反應，你推算到如果自己食：']);
+  const fx='修為 '+sign(mine.cult)+'%　毒素 '+sign(mine.tox)+'　心魔 '+sign(mine.demon)+'　爆體風險 '+mine.risk+'%';
+  current=null;setActs(false);outcome(lines,fx);persist();renderAll();
+}
+function sell(){
+  const p=current;if(!p)return;const v=sellValue(p);P().stones+=v;
+  const who=p.path==='mo'||p.path==='du'?'黑市':'丹閣';
+  current=null;setActs(false);outcome([[who+'掌櫃收咗你粒'+p.name+'，畀咗 '+v+' 靈石。']],'');persist();renderAll();
+}
+
+/* ---------- 生死 ---------- */
+function lifespan(){const pl=P();return LIFE[pl.realm]+pl.lifeBonus;}
+function checkLife(){
+  const pl=P();if(!pl.alive)return;
+  if(pl.realm>=6){endLife('白日飛升','你以丹入道，煉丹 '+pl.brews+' 爐，終於破碎虛空，飛升仙界。師弟們（'+save.shidi+' 位已故）喺天上望住你。',true);return;}
+  if(pl.tox>=100)endLife('毒發身亡','體內毒素積到 '+Math.round(pl.tox)+'，全身經脈轉黑，你倒喺丹爐旁邊。');
+  else if(pl.demon>=100)endLife('走火入魔','心魔吞噬咗你嘅神智。你仰天長笑，衝出山門，從此江湖多咗個魔頭。');
+  else if(pl.age>=lifespan())endLife('壽元耗盡','你喺丹爐前坐化，享年 '+pl.age+' 歲。');
+}
+function endLife(title,text,win){
+  const pl=P();pl.alive=false;
+  $('deathTitle').textContent=title;$('deathTitle').style.color=win?'var(--bronze)':'var(--cinnabar)';
+  $('deathText').textContent=text+'　最終境界：'+REALMS[pl.realm]+'。';
+  $('death').hidden=false;
+  save.dead={title,text:$('deathText').textContent,win:!!win};
+}
+$('rebirth').onclick=()=>{save.player=newPlayer();delete save.dead;save.lives++;$('death').hidden=true;$('result').hidden=true;$('log').innerHTML='';current=null;persist();renderAll();toast('第 '+save.lives+' 世，重新入門');};
+$('task').onclick=()=>{if(busy||!P().alive)return;P().stones+=120;P().age+=1;checkLife();persist();renderAll();toast('斬咗隻狼妖，賺到 120 靈石');};
+let resetArm=false;
+$('reset').onclick=()=>{
+  if(!resetArm){resetArm=true;$('resetConfirm').textContent='再撳多次就會清除所有進度，包括丹譜同師弟數。';setTimeout(()=>{resetArm=false;$('resetConfirm').textContent='';},4000);return;}
+  save={player:newPlayer(),codex:[],shidi:0,lives:1};persist();setActs(false);$('death').hidden=true;$('result').hidden=true;$('log').innerHTML='';resetArm=false;$('resetConfirm').textContent='';renderAll();toast('天地重開');
+};
+
+/* ---------- 狀態列與丹譜 ---------- */
+function renderStats(){
+  const pl=P();const ls=lifespan();
+  const m=(v,c)=>'<span class="meter"><i style="width:'+clamp(v,0,100)+'%;background:'+c+'"></i></span>';
+  $('stats').innerHTML=
+    '<span class="stat"><span class="realm">'+REALMS[pl.realm]+'</span></span>'+
+    '<span class="stat"><span class="k">修為</span>'+m(pl.cult,'var(--jade)')+'<b>'+Math.round(pl.cult)+'%</b></span>'+
+    '<span class="stat"><span class="k">毒素</span>'+m(pl.tox,'#7cc04a')+'<b>'+Math.round(pl.tox)+'</b></span>'+
+    '<span class="stat"><span class="k">心魔</span>'+m(pl.demon,'var(--cinnabar)')+'<b>'+Math.round(pl.demon)+'</b></span>'+
+    '<span class="stat"><span class="k">年歲</span><b>'+pl.age+' / '+(ls>9000?'∞':ls)+'</b></span>'+
+    '<span class="stat"><span class="k">靈石</span><b>'+pl.stones+'</b></span>'+
+    '<span class="stat"><span class="k">已故師弟</span><b>'+save.shidi+'</b></span>';
+}
+function renderCodex(){
+  $('codexCount').textContent='已收錄 '+save.codex.length+' / '+ALL_PILLS.length+'　第 '+save.lives+' 世';
+  $('codex').innerHTML=ALL_PILLS.map(n=>save.codex.includes(n)?'<span>'+n+'</span>':'<span class="unk">'+'？'.repeat(n.length)+'</span>').join('');
+}
+function renderAll(){
+  renderRecipe();renderShelf();renderStats();renderCodex();
+  $('go').disabled=busy||!P().alive||!cfg.order.length;
+  $('go').textContent=busy?'煉製中…':'開爐煉丹';
+  document.querySelectorAll('.chip').forEach(b=>b.disabled=busy);
+}
+$('heat').oninput=e=>{cfg.heat=+e.target.value;renderAll();};
+$('go').onclick=brew;$('aEat').onclick=eat;$('aTest').onclick=test;$('aSell').onclick=sell;
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2600);}
+
+resize();renderAll();
+if(!P().alive&&save.dead){$('deathTitle').textContent=save.dead.title;$('deathTitle').style.color=save.dead.win?'var(--bronze)':'var(--cinnabar)';$('deathText').textContent=save.dead.text;$('death').hidden=false;}
+else if(!P().alive){P().alive=true;}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
