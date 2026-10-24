@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%}
   .ing .meta{font-size:9.5px}
   .dock{padding:6px 8px;gap:4px}
   .wx{flex:1 1 100%}
-  #dockBook,#dockCar{display:none}
+  #dockBook,#dockCar,#dockRoom{display:none}
   .go{margin-left:auto}
   .rate b{font-size:19px}
   .hbtns{flex-wrap:wrap}
@@ -219,6 +219,13 @@ canvas{display:block;width:100%;height:100%}
 .mem-h .ib{margin-left:auto}
 .mem .chip{padding:1px 6px;font-size:12px}
 .team-sum{color:var(--jade)}
+.tbl-wrap{overflow-x:auto}
+.mkt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.mkt th{font-weight:400;color:var(--muted);text-align:left;font-size:12px;letter-spacing:.1em}
+.mkt th,.mkt td{padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mkt .btn{padding:1px 8px}
+.btn.wrap{white-space:normal;text-align:left}
+.up{color:var(--jade)}.dn{color:var(--cinnabar)}
 .dlbtn{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:1px 8px;font-size:12.5px}
 .dlbtn:hover{border-color:var(--cinnabar)}
 .heart{color:var(--cinnabar);font-variant-numeric:tabular-nums}
@@ -310,7 +317,7 @@ canvas{display:block;width:100%;height:100%}
       </div>
       <div class="inner-row" id="innerRow" aria-label="入室弟子"></div>
       <div class="dock">
-        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockCar" type="button">丹途</button><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
+        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockRoom" type="button">丹室</button><button class="btn" id="dockCar" type="button">丹途</button><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
         <div class="dock-row">
           <div class="wx"><span>五行</span><div class="wx-bar" id="wxBar"></div><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
           <span class="rate" id="rate" title="唔炸爐又煉得成丹嘅機會">成功率<b>—</b></span>
@@ -339,6 +346,7 @@ canvas{display:block;width:100%;height:100%}
     <div class="mtabs">
       <button class="btn" type="button" id="mtBook" aria-selected="false">丹書</button>
       <button class="btn" type="button" id="mtShop" aria-selected="false">商行</button>
+      <button class="btn" type="button" id="mtRoom" aria-selected="false">丹室</button>
       <button class="btn" type="button" id="mtAch" aria-selected="true">成就</button>
       <button class="btn" type="button" id="mtCodex" aria-selected="false">丹譜</button>
       <button class="btn" type="button" id="mtLife" aria-selected="false">前世</button>
@@ -495,11 +503,124 @@ try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
 
+/* ---------- 丹價行情 ---------- */
+const GRADE_BASE=[1,15,60,220,1200];
+const GRADE_Q=[5,30,62,100,135];
+function prices(){if(!save.prices)save.prices={};return save.prices;}
+function pidx(name){const P_=prices();if(!P_[name])P_[name]={i:.85+rnd()*.3,prev:1};return P_[name];}
+function priceTick(){Object.keys(prices()).forEach(k=>{const x=prices()[k];x.prev=x.i;x.i=clamp(x.i+(1-x.i)*.2+(rnd()-.5)*.3,.5,1.8);});}
+function pillInfo(name){
+  for(const pth in NAMES)for(const el in NAMES[pth])if(NAMES[pth][el]===name)return{path:pth,dom:el,kind:'normal'};
+  return{'冰火九重天丹':{path:'zheng',dom:'f',kind:'normal'},'三才造化丹':{path:'yi',dom:'w',kind:'normal'},'龍血丹':{path:'mo',dom:'f',kind:'normal'},
+    '斷魂丹':{path:'du',dom:'w',kind:'normal'},'忘情丹':{path:'zheng',dom:'s',kind:'meng'},'雞湯丹':{path:'zheng',dom:'e',kind:'chicken'}}[name]||null;
+}
+function retailPrice(name,g){const inf=pillInfo(name);let v=GRADE_BASE[g]*2.2*pidx(name).i;if(inf&&(inf.path==='mo'||inf.path==='du'))v*=1.2;if(MO().on)v*=1.5;return Math.round(v);}
+function knownPills(){const set=new Set(Object.keys(recipes()));save.codex.forEach(n=>{if(pillInfo(n))set.add(n);});return[...set].filter(n=>pillInfo(n));}
+function makeShopPill(name,g){
+  const inf=pillInfo(name);
+  return{name,kind:inf.kind,grade:g,gradeName:GRADES[g],Q:GRADE_Q[g],path:inf.path,dom:inf.dom,tox:inf.path==='du'?8:2,yy:0,demon:inf.path==='mo'?12:inf.path==='fo'?-20:0,art:'taishang',
+    desc:'商行買返嚟嘅'+GRADES[g]+name+'，用紅紙包住，封口仲有商行嘅印。',elHex:EL[inf.dom].hex,count:1};
+}
+/* ---------- 丹室、丹瓶、儲物袋 ---------- */
+const ROOM_LV=[{n:'丹櫃',cap:10,cost:0},{n:'丹格',cap:25,cost:400},{n:'丹室',cap:50,cost:1200},{n:'丹閣',cap:100,cost:3000},{n:'丹庫',cap:200,cost:8000}];
+const BOTTLES=[{n:'冇丹瓶',loss:.06,d:'丹藥每年流失 6% 藥力'},{n:'瓷瓶',p:200,loss:.03,d:'每年只流失 3% 藥力'},{n:'玉瓶',p:1200,loss:0,d:'藥力唔再流失'},{n:'紫金瓶',p:5000,loss:-.02,d:'溫養丹藥，藥力每年 +2%'}];
+const BAGS=[{n:'粗布藥囊',cap:20,extra:0,guard:0,d:'藥囊最多放 20 份藥材'},{n:'儲物袋',p:300,cap:50,extra:1,guard:0,d:'藥囊 50 份，採藥多 1 份'},{n:'乾坤袋',p:1500,cap:120,extra:2,guard:.5,d:'藥囊 120 份，採藥多 2 份，被搶、被圍剿、中伏損失減半'},{n:'須彌袋',p:6000,cap:300,extra:3,guard:.5,d:'藥囊 300 份，採藥多 3 份，損失減半'}];
+function DR(){const pl=P();if(!pl.dr)pl.dr={lvl:0,stacks:[],bottle:0,bagLv:0};return pl.dr;}
+function roomCap(){return ROOM_LV[DR().lvl].cap;}
+function roomCount(){return DR().stacks.reduce((a,s)=>a+s.count,0);}
+function bagCap(){return BAGS[DR().bagLv].cap;}
+function bagCount(){return Object.values(bag()).reduce((a,b)=>a+b,0);}
+function bagAdd(id,n){const room=bagCap()-bagCount();const k=Math.max(0,Math.min(n,room));if(k>0){const b=bag();b[id]=(b[id]||0)+k;}return k;}
+function guardMul(){return 1-BAGS[DR().bagLv].guard;}
+function storePill(p,n){
+  const dr=DR();n=Math.min(n,roomCap()-roomCount());if(n<=0)return 0;
+  const st=dr.stacks.find(s=>s.name===p.name&&s.grade===p.grade&&s.kind===p.kind);
+  if(st){st.Q=(st.Q*st.count+p.Q*n)/(st.count+n);st.count+=n;}
+  else{const c=Object.assign({},p);c.count=n;dr.stacks.push(c);}
+  return n;
+}
+function roomDecay(msgs){
+  const dr=DR();const loss=BOTTLES[dr.bottle].loss;if(!dr.stacks.length)return;
+  dr.stacks.forEach(s=>{
+    s.Q=Math.max(1,s.Q*(1-loss));
+    const g=s.Q<15?0:s.Q<45?1:s.Q<80?2:s.Q<120?3:4;
+    if(loss>0&&g<s.grade&&!FAIL_KINDS.includes(s.kind)){s.grade=g;s.gradeName=GRADES[g];if(g===0){s.kind='waste';}msgs.push('丹室入面嘅'+s.name+'藥力流失，跌咗做'+GRADES[g]);}
+    if(loss<0&&g>s.grade&&s.grade<4){s.grade=Math.min(4,g);s.gradeName=GRADES[s.grade];msgs.push('紫金瓶溫養，'+s.name+'升咗做'+GRADES[s.grade]);}
+  });
+}
+function takeOut(i){
+  const dr=DR();const s=dr.stacks[i];if(!s)return;
+  if(current&&current.count>0){const n=storePill(current,current.count);current.count-=n;if(current.count>0){toast('手上仲有丹未處理，丹室又滿咗');return;}current=null;}
+  dr.stacks.splice(i,1);current=s;$('modal').hidden=true;showPill();persist();renderAll();
+}
+function stashCurrent(){
+  const p=current;if(!p)return;const n=storePill(p,p.count||1);
+  if(!n){toast('丹室已滿（'+roomCap()+' 粒），可以喺丹室升級');return;}
+  p.count-=n;const left=p.count;if(left<=0)current=null;
+  if(left>0)showOutcome('收入丹室',[['收咗 '+n+' 粒'+p.name+'入丹室，丹室滿咗，仲剩 '+left+' 粒要處理。']],'');
+  else showOutcome('收入丹室',[['收咗 '+n+' 粒'+p.name+'入丹室。']],'');
+  afterAction();
+}
+function upgradeRoom(){const dr=DR();const nx=ROOM_LV[dr.lvl+1];if(!nx)return;if(P().stones<nx.cost){bookMsg('靈石唔夠，要 '+nx.cost);return;}P().stones-=nx.cost;dr.lvl++;bio('丹房擴建為「'+nx.n+'」');bookMsg('擴建成「'+nx.n+'」，可以放 '+nx.cap+' 粒丹。');afterAction();}
+function buyGear(kind){
+  const dr=DR();const L=kind==='bottle'?BOTTLES:BAGS;const key=kind==='bottle'?'bottle':'bagLv';const nx=L[dr[key]+1];if(!nx)return;
+  const pr=Math.round(nx.p*(MO().on?1.5:1));if(P().stones<pr){bookMsg('靈石唔夠，要 '+pr);return;}
+  P().stones-=pr;dr[key]++;bookMsg('買咗'+nx.n+'：'+nx.d+'。');afterAction();
+}
+function buyPill(name,g){
+  const pr=retailPrice(name,g);if(P().stones<pr){bookMsg('靈石唔夠，要 '+pr);return;}
+  if(roomCount()>=roomCap()){bookMsg('丹室滿咗，放唔落');return;}
+  P().stones-=pr;storePill(makeShopPill(name,g),1);bookMsg('買咗一粒'+GRADES[g]+name+'，放咗入丹室。');afterAction();
+}
+let shopGrade=2;
+function renderMarket(){
+  const g=shopGrade;const list=knownPills();
+  let h='<div class="label" style="align-items:center">丹藥行情<span class="chips">'+[1,2,3,4].map(k=>'<button class="chip" type="button" data-a="sg" data-g="'+k+'" aria-pressed="'+(g===k)+'">'+GRADES[k]+'</button>').join('')+'</span></div>';
+  if(!list.length)return h+'<div class="desc">你未識煉任何丹，行情表空空如也。</div>';
+  h+='<div class="tbl-wrap"><table class="mkt"><thead><tr><th>丹藥</th><th>行情</th><th>收丹價</th><th>零售價</th><th></th></tr></thead><tbody>';
+  list.forEach(n=>{
+    const inf=pillInfo(n);const x=pidx(n);const black=MO().on||inf.path==='mo'||inf.path==='du';
+    const fake={name:n,grade:g,kind:inf.kind,path:inf.path};
+    const sell=Math.max(1,Math.round(basePrice(fake)*satMult(n)));const ret=retailPrice(n,g);
+    const tr=x.i>x.prev+.02?'<span class="up">▲</span>':x.i<x.prev-.02?'<span class="dn">▼</span>':'<span class="desc">－</span>';
+    h+='<tr><td>'+n+(black?' <span class="tag bad">黑市</span>':'')+'</td><td>'+tr+' '+Math.round(x.i*100)+'%</td><td>'+sell+(satMult(n)<.85?' <span class="desc">（壓價）</span>':'')+'</td><td>'+ret+'</td><td><button class="btn" type="button" data-a="bp" data-n="'+n+'"'+(P().stones<ret||roomCount()>=roomCap()?' disabled':'')+'>買</button></td></tr>';
+  });
+  h+='</tbody></table></div><p class="desc">收丹價＝你賣畀'+(MO().on?'黑市':'丹閣')+'嘅價錢（已計市場飽和）；零售價＝你買嘅價錢，買咗會放入丹室。行情每年上落。</p>';
+  return h;
+}
+function renderGear(){
+  const dr=DR();
+  const row=(L,key,kind,label)=>{const cur=L[dr[key]];const nx=L[dr[key]+1];
+    return'<div class="mem"><div class="mem-h"><b>'+label+'：'+cur.n+'</b></div><div class="desc">'+cur.d+'</div>'+(nx?'<button class="btn wrap" type="button" data-a="gear" data-k="'+kind+'"'+(P().stones<Math.round(nx.p*(MO().on?1.5:1))?' disabled':'')+'>換'+nx.n+'（'+Math.round(nx.p*(MO().on?1.5:1))+' 靈石）：'+nx.d+'</button>':'<span class="desc">已經係最好</span>')+'</div>';};
+  return'<div class="label" style="margin-top:8px">器物</div><div class="mems">'+row(BOTTLES,'bottle','bottle','丹瓶')+row(BAGS,'bagLv','bag','儲物袋')+'</div>';
+}
+function renderRoom(){
+  const dr=DR();const L=ROOM_LV[dr.lvl];const nx=ROOM_LV[dr.lvl+1];
+  let h='<div class="desc">'+L.n+'：放咗 '+roomCount()+' / '+roomCap()+' 粒　丹瓶：'+BOTTLES[dr.bottle].n+'（'+BOTTLES[dr.bottle].d+'）　藥囊：'+bagCount()+' / '+bagCap()+' 份（'+BAGS[dr.bagLv].n+'）</div>';
+  h+='<div class="mems" style="margin-top:6px">';
+  if(!dr.stacks.length)h+='<div class="desc">丹室空空如也。出丹時撳「收入丹室」就可以放入嚟。</div>';
+  dr.stacks.forEach((s,i)=>{h+='<div class="mem"><div class="mem-h"><b>'+s.name+'</b><span class="tag">'+s.gradeName+'</span><span class="desc">×'+s.count+' · 藥力 '+Math.round(s.Q)+'</span></div><div class="draw-acts"><button class="btn" type="button" data-a="take" data-i="'+i+'">取出處理</button><button class="btn" type="button" data-a="rsell" data-i="'+i+'">全部賣（約 '+quoteN(s,s.count)+'）</button></div></div>';});
+  h+='</div>';
+  h+='<div class="car-act" style="margin-top:8px">'+(nx?'<button class="btn" type="button" data-a="rup"'+(P().stones<nx.cost?' disabled':'')+'>擴建做「'+nx.n+'」（'+nx.cost+' 靈石，放 '+nx.cap+' 粒）</button>':'<span class="desc">丹室已經擴建到最大</span>')+'</div>';
+  h+=renderGear();
+  $('mBody').innerHTML=h;
+}
+function onRoomClick(e){
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a;
+  if(a==='take')takeOut(+b.dataset.i);
+  else if(a==='rsell'){const dr=DR();const s=dr.stacks[+b.dataset.i];if(!s)return;const keep=current;current=s;dr.stacks.splice(+b.dataset.i,1);$('modal').hidden=true;doSell(s.count);if(keep&&keep!==current)current=keep;}
+  else if(a==='rup')upgradeRoom();
+  else if(a==='gear')buyGear(b.dataset.k);
+  else if(a==='sg'){shopGrade=+b.dataset.g;renderModal();}
+  else if(a==='bp')buyPill(b.dataset.n,shopGrade);
+}
+
+
 /* ---------- 丹市：飽和同黑市 ---------- */
 function market(){if(!save.market)save.market={};return save.market;}
 function isBlack(p){return MO().on||p.path==='mo'||p.path==='du';}
 function basePrice(p){
-  let v=[1,15,60,220,1200][p.grade];const black=isBlack(p);
+  let v=GRADE_BASE[p.grade]*pidx(p.name).i;const black=isBlack(p);
   if(black)v*=1.2;
   if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;
   const c=C();if(!black&&c.aff==='xie')v*=1.1;if(!black&&c.aff==='own'&&c.lvl>=2)v*=1.2;
@@ -516,7 +637,7 @@ function doSell(n,auto){
   if(black&&!auto){
     const m=MO();const amb=.08+(m.on?m.infamy*.003:0);const r=rnd();
     if(r<amb){
-      sold=false;v=0;const lost=Math.round(P().stones*.15);P().stones-=lost;gainCult(-8);if(m.on)m.infamy+=5;
+      sold=false;v=0;const lost=Math.round(P().stones*.15*guardMul());P().stones-=lost;gainCult(-8);if(m.on)m.infamy+=5;
       lines.push(['你喺黑市交收嗰陣，正道弟子突然殺出嚟！'+n+' 粒'+p.name+'全部被沒收，你仲要賠 '+lost+' 靈石先脫身，修為 −8%'+(m.on?'，惡名 +5':'')+'。','bad']);bio('黑市賣丹中伏，被正道圍捕');
     }else if(r<amb+.07){
       sold=false;v=0;gainCult(-5);
@@ -598,7 +719,7 @@ function giftPill(){
 /* ---------- 奇遇 ---------- */
 function gainCult(n){const pl=P();pl.cult=Math.max(0,pl.cult+n);while(pl.cult>=100&&pl.realm<6){pl.cult-=100;pl.realm++;}save.st.maxRealm=Math.max(save.st.maxRealm,pl.realm);}
 function rareBook(){const pool=Object.keys(BOOKS).filter(id=>(BOOKS[id].src.includes('yao')||BOOKS[id].src.includes('shop'))&&!hasBook(id));if(!pool.length)return null;const id=pool[Math.floor(rnd()*pool.length)];gainBook(id);return id;}
-function rareHerb(){const pool=Object.keys(ING).filter(id=>isUnl('ing',id)&&ING[id].p>=90);if(!pool.length)return null;const id=pool[Math.floor(rnd()*pool.length)];const b=bag();b[id]=(b[id]||0)+1+Math.floor(rnd()*2);return id;}
+function rareHerb(){const pool=Object.keys(ING).filter(id=>isUnl('ing',id)&&ING[id].p>=90);if(!pool.length)return null;const id=pool[Math.floor(rnd()*pool.length)];if(!bagAdd(id,1+Math.floor(rnd()*2)))return null;return id;}
 function dlOffer(d,how){
   const cur=DL();
   if(cur)return{lines:[['你心中只有'+cur.name+'，婉拒咗'+d.name+'嘅心意。']]};
@@ -629,7 +750,7 @@ const ADV=[
       {t:'救佢',f:()=>{const r=rnd();
         if(r<.45){const d=makeDL('mo');d.aff=70+Math.floor(rnd()*20);return dlOffer(d,'救咗重傷嘅女魔頭');}
         if(r<.75){const id=hasBook('xf_tianmo')?null:(gainBook('xf_tianmo')&&'xf_tianmo');if(id)return{lines:[['女魔頭傷好之後留低一本《天魔噬心訣殘本》報恩，然後消失喺霧中。','good']]};P().stones+=500;return{lines:[['女魔頭傷好之後留低一個儲物袋，入面有 500 靈石。','good']]};}
-        const lost=Math.round(P().stones*.3);P().stones-=lost;gainCult(-15);bio('救咗女魔頭，反被佢吸走修為');return{lines:[['女魔頭一傷好就反咬你一口，吸走你修為，仲順手拎走 '+lost+' 靈石。修為 −15%','bad']]};}},
+        const lost=Math.round(P().stones*.3*guardMul());P().stones-=lost;gainCult(-15);bio('救咗女魔頭，反被佢吸走修為');return{lines:[['女魔頭一傷好就反咬你一口，吸走你修為，仲順手拎走 '+lost+' 靈石。修為 −15%','bad']]};}},
       {t:'唔理佢',f:()=>({lines:[['你當睇唔到，行咗去。身後傳嚟一聲冷笑。']]})},
       {t:'補刀搜身',f:()=>{P().stones+=300;P().demon=clamp(P().demon+12,0,200);bio('補刀殺咗重傷嘅女魔頭');return{lines:[['你一劍落去，喺佢身上搜到 300 靈石。心魔 +12','bad']]};}}]}};}},
   {w:3,ctx:'herb',run:L=>{
@@ -843,7 +964,7 @@ function yearTick(){
       if(d.realm>=5)d.cult=Math.min(d.cult,100);
       if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;LN().oldAge++;bio('入室弟子'+d.name+'壽終坐化');msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
-    loyTick(msgs);dlTick(msgs);marketDecay();
+    loyTick(msgs);dlTick(msgs);marketDecay();priceTick();roomDecay(msgs);
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
       if(rnd()*100<ch){const m=genCand();m.cost=0;c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做記名弟子');}
@@ -1013,7 +1134,7 @@ function moTick(){
     if(esc.length){m.prisoners=m.prisoners.filter(x=>!esc.includes(x));m.infamy+=4*esc.length;notice(esc.map(x=>x.name).join('、')+'趁夜逃走咗，周圍話你知。惡名 +'+4*esc.length,'bad');}
     if(rnd()*100<m.infamy*.4){
       if(m.infamy>=80&&rnd()<.25){endLife('被正道斬殺','正道各派聯手殺上山門，你力戰三日三夜，終於被斬於丹爐之前。');return;}
-      const lost=Math.round(pl.stones*.3);pl.stones-=lost;pl.cult=Math.max(0,pl.cult-10);
+      const lost=Math.round(pl.stones*.3*guardMul());pl.stones-=lost;pl.cult=Math.max(0,pl.cult-10);
       const freed=m.prisoners.length;m.prisoners=[];m.infamy=Math.max(0,m.infamy-20);
       notice('正道殺上門圍剿！你重傷逃脫，損失 '+lost+' 靈石，修為 −10%'+(freed?'，'+freed+' 個凡人被救走':'')+'。','bad');
     }
@@ -1214,7 +1335,7 @@ function renderShop(){
   if(!st.length)h+='<div class="desc">今年冇新貨，過一年再嚟睇。</div>';
   st.forEach(id=>{const B=BOOKS[id];h+='<div class="mem"><div class="mem-h"><b>《'+B.n+'》</b><span class="tag">'+BOOK_T[B.t]+'</span></div><div class="desc">'+B.d+(B.rec?' 載有 '+B.rec.length+' 條丹方。':'')+'</div><button class="btn" type="button" data-a="buy" data-id="'+id+'" '+(P().stones<priceOf(B)?'disabled':'')+'>買（'+priceOf(B)+' 靈石）</button></div>';});
   h+='</div>';
-  $('mBody').innerHTML=h;
+  $('mBody').innerHTML=renderMarket()+'<div class="label" style="margin-top:8px">藏書</div>'+h+renderGear();
 }
 function onBookClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
@@ -1659,7 +1780,7 @@ function brew(){
   const c=costOf();if(P().stones<c){toast('靈石唔夠（要 '+c+'），撳「下山斬妖」賺返啲先');return;}
   {const u=bagSplit().used;const b=bag();Object.keys(u).forEach(k=>{b[k]-=u[k];if(b[k]<=0)delete b[k];});}
   P().stones-=c;P().age+=1;save.st.brews++;LN().brews++;
-  if(current&&current.count>0){const n=current.count,nm=current.name,v=doSell(n,true);toast('上一爐剩低嘅 '+n+' 粒'+nm+'由弟子拎去賣咗，得 '+v+' 靈石',3500);}
+  if(current&&current.count>0){const nm=current.name;const k=storePill(current,current.count);current.count-=k;let msg=k?k+' 粒'+nm+'收咗入丹室':'';if(current.count>0){const v=doSell(current.count,true);msg+=(msg?'，':'')+'丹室放唔落嘅由弟子拎去賣咗，得 '+v+' 靈石';}toast('上一爐'+msg,3500);current=null;}
   busy=true;brewing=true;current=null;closeOverlay();$('log').innerHTML='';renderAll();
   const a=analyse();const F=FIRES[cfg.fire];
   const exploded=rnd()*100<a.boom;
@@ -1751,10 +1872,11 @@ function showPill(){
     '<div><div class="pill-grade">'+p.gradeName+(DANWEN[p.grade]?' · '+CN[DANWEN[p.grade]]+'紋':'')+' · '+PATHS[p.path].n+'</div><div class="pill-name">'+p.name+(p.count>1?'<span class="pill-count">×'+p.count+'</span>':'')+'</div></div></div>'+
     '<p>'+p.desc+'</p><div class="pill-props">'+tags.map(([c,t])=>'<span class="tag '+c+'">'+t+'</span>').join('')+'</div>'+
     '<div class="actions"><button class="act eat" type="button" id="aEat"><b>食</b><small>一啖吞落肚</small></button><button class="act" type="button" id="aTest"><b>試藥</b><small>搵師弟食先</small></button><button class="act" type="button" id="aSell"><b>賣</b><small>'+(isBlack(p)?'黑市':'丹閣')+' '+sellValue(p)+' 靈石</small></button></div>'+
-    ((p.count>1||DL())?'<div class="more-row">'+(DL()?'<button class="btn" type="button" id="aGift">送畀道侶'+DL().name+'</button>':'')+(p.count>1?'<button class="btn" type="button" id="aSellAll">全部 '+p.count+' 粒'+(isBlack(p)?'拎去黑市':'')+'賣晒（約 '+quoteN(p,p.count)+' 靈石）</button>':'')+'</div>':'')
+    (true?'<div class="more-row"><button class="btn" type="button" id="aStash">收入丹室（剩 '+(roomCap()-roomCount())+' 位）</button>'+(DL()?'<button class="btn" type="button" id="aGift">送畀道侶'+DL().name+'</button>':'')+(p.count>1?'<button class="btn" type="button" id="aSellAll">全部 '+p.count+' 粒'+(isBlack(p)?'拎去黑市':'')+'賣晒（約 '+quoteN(p,p.count)+' 靈石）</button>':'')+'</div>':'')
   );
   if($('aSellAll'))$('aSellAll').onclick=sellAll;
   if($('aGift'))$('aGift').onclick=giftPill;
+  $('aStash').onclick=stashCurrent;
   $('aEat').onclick=eat;$('aTest').onclick=test;$('aSell').onclick=sell;
 }
 function showOutcome(title,lines,fx){
@@ -1926,8 +2048,9 @@ function renderAll(){
 /* ---------- 成就／丹譜彈窗 ---------- */
 let mTab='ach';
 function renderModal(){
-  [['mtBook','book'],['mtShop','shop'],['mtAch','ach'],['mtCodex','codex'],['mtCar','car'],['mtLife','life']].forEach(([id,t])=>$(id).setAttribute('aria-selected',mTab===t));
+  [['mtBook','book'],['mtShop','shop'],['mtRoom','room'],['mtAch','ach'],['mtCodex','codex'],['mtCar','car'],['mtLife','life']].forEach(([id,t])=>$(id).setAttribute('aria-selected',mTab===t));
   if(mTab==='book'){$('mTitle').innerHTML='丹書<span>'+Object.keys(recipes()).length+' 條丹方　'+books().length+' 本藏書</span>';renderBooks();return;}
+  if(mTab==='room'){$('mTitle').innerHTML='丹室<span>'+roomCount()+' / '+roomCap()+' 粒　你有 '+P().stones+' 靈石</span>';renderRoom();return;}
   if(mTab==='shop'){$('mTitle').innerHTML='商行<span>你有 '+P().stones+' 靈石</span>';renderShop();return;}
   if(mTab==='life'){$('mTitle').innerHTML='前世今生<span>第 '+save.lives+' 世</span>';renderLives();return;}
   if(mTab==='car'){$('mTitle').innerHTML='丹途門派<span>'+titleOf()+'</span>';renderCareer();return;}
@@ -1961,9 +2084,9 @@ $('openCar').onclick=()=>{mTab='car';$('modal').hidden=false;$('mMsg').textConte
 $('mBody').addEventListener('click',e=>{
   if(mTab==='codex'){const b=e.target.closest('[data-a=brew]');if(b&&!b.disabled&&applyRecipe(b.dataset.n)){
     if(P().stones<costOf()){toast('已配好「'+b.dataset.n+'」，但靈石唔夠開爐（要 '+costOf()+'）',3500);}else brew();}return;}
-  if(mTab==='car')onCareerClick(e);else if(mTab==='book'||mTab==='shop')onBookClick(e);});
+  if(mTab==='car')onCareerClick(e);else if(mTab==='book')onBookClick(e);else if(mTab==='shop'){onBookClick(e);onRoomClick(e);}else if(mTab==='room')onRoomClick(e);});
 function openTab(t){mTab=t;$('modal').hidden=false;$('mMsg').textContent='';renderModal();}
-$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('dockCar').onclick=()=>openTab('car');$('openShop').onclick=()=>openTab('shop');
+$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('dockCar').onclick=()=>openTab('car');$('dockRoom').onclick=()=>openTab('room');$('mtRoom').onclick=()=>openTab('room');$('openShop').onclick=()=>openTab('shop');
 $('mtBook').onclick=()=>openTab('book');$('mtShop').onclick=()=>openTab('shop');
 function cheat(){
   const v=$('cheatIn').value.trim();$('cheatIn').value='';
@@ -1988,7 +2111,7 @@ function gatherHerbs(){
   const pl=P();pl.age+=1;
   const pool=Object.keys(ING).filter(id=>isUnl('ing',id)&&id!=='jitang');
   const pickers=C().members.filter(m=>m.role==='cai');
-  const n=2+Math.floor(rnd()*3)+pickers.length;
+  const n=2+Math.floor(rnd()*3)+pickers.length+BAGS[DR().bagLv].extra;
   const got={};
   for(let i=0;i<n;i++){
     // 平嘢易搵，貴嘢難搵
@@ -1996,9 +2119,11 @@ function gatherHerbs(){
     let r=rnd()*tot,k=0;while(r>w[k]){r-=w[k];k++;}
     const id=pool[Math.min(k,pool.length-1)];got[id]=(got[id]||0)+1;
   }
-  const b=bag();Object.keys(got).forEach(k=>b[k]=(b[k]||0)+got[k]);
+  let lostH=0;Object.keys(got).forEach(k=>{const a=bagAdd(k,got[k]);lostH+=got[k]-a;});
   const lines=[['你喺山上行咗一年，採到：'+Object.keys(got).map(k=>ING[k].n+(got[k]>1?'×'+got[k]:'')).join('、')+'。已經放入藥囊，煉丹時優先用，唔使錢。']];
   if(pickers.length)lines.push([pickers.map(m=>m.name).join('、')+'跟你上山，多採咗 '+pickers.length+' 份。','good']);
+  if(BAGS[DR().bagLv].extra)lines.push([BAGS[DR().bagLv].n+'裝得多，多採咗 '+BAGS[DR().bagLv].extra+' 份。']);
+  if(lostH)lines.push(['藥囊滿咗（'+bagCap()+' 份），有 '+lostH+' 份放唔落，唯有掉低。','bad']);
   const res=adventure('herb',lines);
   resolveAdv('上山採藥',lines,res);
 }
