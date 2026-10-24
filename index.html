@@ -121,6 +121,10 @@ canvas{display:block;width:100%;height:100%}
 .go:disabled{opacity:.45;cursor:not-allowed}
 .cost{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .cost b{color:var(--paper)}
+.rate{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rate b{font-family:var(--display);font-weight:400;font-size:22px;line-height:1;margin-left:3px}
+.rate.hi b{color:var(--jade)}.rate.mid b{color:var(--bronze)}.rate.lo b{color:var(--cinnabar)}
+.ing .bag{color:var(--jade);font-weight:600}
 
 .tabs{display:none}
 @media (max-width:860px){
@@ -143,6 +147,10 @@ canvas{display:block;width:100%;height:100%}
   .ing .nm{font-size:12px;gap:3px}
   .ing .meta{font-size:9.5px}
   .dock{padding:6px 8px;gap:4px}
+  .wx{flex:1 1 100%}
+  .go{margin-left:auto}
+  .rate b{font-size:19px}
+  .hbtns{flex-wrap:wrap}
   .center{display:contents}
   .stage{grid-row:1;min-height:0}
   .dock{grid-row:2}
@@ -206,6 +214,7 @@ canvas{display:block;width:100%;height:100%}
     <div class="stats" id="stats"></div>
     <div class="hbtns">
       <button class="btn" id="task" type="button">下山斬妖</button>
+      <button class="btn" id="herb" type="button">上山採藥</button>
       <button class="btn" id="openCar" type="button">丹途</button>
       <button class="btn" id="openAch" type="button">成就</button>
     </div>
@@ -237,6 +246,7 @@ canvas{display:block;width:100%;height:100%}
         <div class="dock-row"><ol class="order" id="order"></ol></div>
         <div class="dock-row">
           <div class="wx"><span>五行</span><div class="wx-bar" id="wxBar"></div><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
+          <span class="rate" id="rate" title="唔炸爐又煉得成丹嘅機會">成功率<b>—</b></span>
           <span class="cost" id="cost"></span>
           <button class="go" id="go" type="button">開爐</button>
         </div>
@@ -399,6 +409,8 @@ let save=newSave();
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.player){save=Object.assign(newSave(),s);save.st=Object.assign(newSave().st,s.st||{});}}}catch(e){}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
+function bag(){const pl=P();if(!pl.bag)pl.bag={};return pl.bag;}
+function bagSplit(){const b=Object.assign({},bag());let paid=0;const used={};cfg.order.forEach(id=>{if(b[id]>0){b[id]--;used[id]=(used[id]||0)+1;}else paid+=ING[id].p;});return{paid,used};}
 
 /* ---------- 丹途：身份、門派、弟子 ---------- */
 const CERT=['無證','一品','二品','三品','四品','五品','六品','七品','八品','九品'];
@@ -613,7 +625,7 @@ function checkAch(){
 }
 
 /* ---------- 選擇狀態 ---------- */
-const DEFAULT_CFG={path:'zheng',art:'taishang',fire:'fan',heat:4,furn:'qingtong',order:['lingzhi','renshen','xuantu']};
+const DEFAULT_CFG={path:'zheng',art:'taishang',fire:'fan',heat:4,furn:'qingtong',order:['xuantu','lingzhi','renshen']};
 const cfg=JSON.parse(JSON.stringify(DEFAULT_CFG));
 let busy=false,current=null,brewing=false;
 function fixCfg(){
@@ -655,7 +667,7 @@ function renderShelf(){
   Object.entries(ING).forEach(([id,o])=>{
     if(!isUnl('ing',id)){locked++;return;}
     const b=document.createElement('button');b.type='button';b.className='ing';b.disabled=full||busy;
-    b.innerHTML='<span class="nm"><span class="dot" style="background:'+EL[o.el].c+'"></span>'+o.n+'</span><span class="meta">'+EL[o.el].n+'·力'+o.pot+(o.tox?'·毒'+o.tox:'')+'·'+o.p+'石</span>';
+    b.innerHTML='<span class="nm"><span class="dot" style="background:'+EL[o.el].c+'"></span>'+o.n+'</span><span class="meta">'+EL[o.el].n+'·力'+o.pot+(o.tox?'·毒'+o.tox:'')+'·'+o.p+'石'+(bag()[id]?' <span class="bag">囊×'+bag()[id]+'</span>':'')+'</span>';
     b.onclick=()=>{if(cfg.order.length<FURN[cfg.furn].cap){cfg.order.push(id);renderAll();}};
     b.onmouseenter=b.onfocus=()=>{$('ingTip').textContent=o.n+'：'+o.d+'（'+(o.yy>0?'陽':o.yy<0?'陰':'中和')+(o.yy?Math.abs(o.yy):'')+'）';};
     shelf.appendChild(b);
@@ -679,8 +691,19 @@ function renderShelf(){
   $('wxBar').innerHTML=ELK.map(k=>'<i title="'+EL[k].n+' '+Math.round(a.el[k]/tot*100)+'%" style="width:'+(a.el[k]/tot*100)+'%;background:'+EL[k].c+'"></i>').join('');
   $('yyNeedle').style.left=clamp(50+a.yy*4,3,97)+'%';
   $('cost').innerHTML='開銷 <b>'+costOf()+'</b> / '+P().stones+' 石';
+  {const r=a.n?successRate(a):0;const el=$('rate');el.className='rate '+(!a.n?'':r>=80?'hi':r>=50?'mid':'lo');
+   el.innerHTML='成功率<b>'+(a.n?r+'%':'—')+'</b>'+(team().wild?'<small>±</small>':'');
+   el.title=a.n?'唔炸爐又煉得成丹嘅機會約 '+r+'%（火候偏差三級或以上必定出生丹／焦炭丹）'+(team().wild?'（好奇弟子助爐，會有變數）':''):'未放藥材';}
 }
-function costOf(){return Math.round(cfg.order.reduce((s,id)=>s+ING[id].p,0)*(1-team().disc/100))+FURN[cfg.furn].cost;}
+function successRate(a){
+  // 唔炸爐 × 出到正常丹（唔係廢丹、生丹、焦炭丹）
+  if(a.dev<=-3||a.dev>=3)return 0;
+  const good=a.flags.chicken?1:a.Q<=0?0:clamp((1.12-15/a.Q)/.24,0,1);
+  let ok=(1-a.boom/100)*good;
+  if(cfg.fire==='fenghuang')ok+=a.boom/100*.3*good;
+  return Math.round(ok*100);
+}
+function costOf(){return Math.round(bagSplit().paid*(1-team().disc/100))+FURN[cfg.furn].cost;}
 
 /* ---------- 核心演算 ---------- */
 function analyse(){
@@ -803,6 +826,7 @@ function brew(){
   if(busy||!P().alive)return;
   if(!cfg.order.length){toast('爐入面未有藥材');return;}
   const c=costOf();if(P().stones<c){toast('靈石唔夠（要 '+c+'），撳「下山斬妖」賺返啲先');return;}
+  {const u=bagSplit().used;const b=bag();Object.keys(u).forEach(k=>{b[k]-=u[k];if(b[k]<=0)delete b[k];});}
   P().stones-=c;P().age+=1;save.st.brews++;
   busy=true;brewing=true;current=null;closeOverlay();$('log').innerHTML='';renderAll();
   const a=analyse();const F=FIRES[cfg.fire];
@@ -1022,7 +1046,7 @@ function renderAll(){
   renderRecipe();renderShelf();renderStats();
   $('go').disabled=busy||!P().alive||!cfg.order.length;
   $('go').textContent=busy?'煉製中':'開爐';
-  $('task').disabled=busy||!P().alive;
+  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;
   if(!$('modal').hidden)renderModal();
 }
 
@@ -1065,6 +1089,33 @@ $('reset').onclick=()=>{
 };
 
 /* ---------- 其他 ---------- */
+function gatherHerbs(){
+  if(busy||!P().alive)return;
+  const pl=P();pl.age+=1;
+  const pool=Object.keys(ING).filter(id=>isUnl('ing',id)&&id!=='jitang');
+  const pickers=C().members.filter(m=>m.role==='cai');
+  const n=2+Math.floor(rnd()*3)+pickers.length;
+  const got={};
+  for(let i=0;i<n;i++){
+    // 平嘢易搵，貴嘢難搵
+    const w=pool.map(id=>1/Math.sqrt(ING[id].p));const tot=w.reduce((a,b)=>a+b,0);
+    let r=rnd()*tot,k=0;while(r>w[k]){r-=w[k];k++;}
+    const id=pool[Math.min(k,pool.length-1)];got[id]=(got[id]||0)+1;
+  }
+  const b=bag();Object.keys(got).forEach(k=>b[k]=(b[k]||0)+got[k]);
+  const lines=[['你喺山上行咗一年，採到：'+Object.keys(got).map(k=>ING[k].n+(got[k]>1?'×'+got[k]:'')).join('、')+'。已經放入藥囊，煉丹時優先用，唔使錢。']];
+  if(pickers.length)lines.push([pickers.map(m=>m.name).join('、')+'跟你上山，多採咗 '+pickers.length+' 份。','good']);
+  const ev=rnd();
+  if(ev<.1){const d=Math.round(5+rnd()*8);pl.cult=Math.max(0,pl.cult-d);lines.push(['半路撞到隻妖獸，打到甩頭甩髻先走得甩。修為 −'+d+'%','bad']);}
+  else if(ev<.17){const u=Math.round(4+rnd()*6);pl.cult+=u;lines.push(['喺山洞發現一眼靈泉，浸咗一晚。修為 +'+u+'%','good']);}
+  else if(ev<.22){pl.stones+=60;lines.push(['喺樹下執到個前人遺下嘅錢袋，有 60 靈石。','good']);}
+  else if(ev<.27){pl.tox=clamp(pl.tox+6,0,200);lines.push(['好奇試食咗粒野果，屙咗成晚。毒素 +6','bad']);}
+  while(pl.cult>=100&&pl.realm<6){pl.cult-=100;pl.realm++;lines.push(['你喺山頂頓悟，突破到「'+REALMS[pl.realm]+'」！','good']);}
+  save.st.maxRealm=Math.max(save.st.maxRealm,pl.realm);
+  showOutcome('上山採藥',lines,'');
+  afterAction();
+}
+$('herb').onclick=gatherHerbs;
 $('task').onclick=()=>{if(busy||!P().alive)return;P().stones+=120;P().age+=1;afterAction();toast('斬咗隻狼妖，賺到 120 靈石，用咗一年');};
 $('heat').oninput=e=>{cfg.heat=+e.target.value;renderAll();};
 $('go').onclick=brew;
