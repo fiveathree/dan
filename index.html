@@ -485,6 +485,53 @@ try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
 
+/* ---------- 忠誠度、升降 ---------- */
+function isInner(m){return inner().includes(m);}
+function loyBase(m){return isInner(m)?70:50;}
+function loy(m){if(m.loy===undefined)m.loy=loyBase(m);return m.loy;}
+function addLoy(m,d){m.loy=clamp(loy(m)+d,0,100);}
+function loyMult(m){const l=loy(m);return l<30?.5:l>=80?1.1:1;}
+function loyTag(m){const l=Math.round(loy(m));return'<span class="tag '+(l<30?'bad':l>=80?'good':'')+'" title="低過 30 做嘢效果減半；80 以上多一成；低過 15 每年有機會叛出師門">忠誠 '+l+'</span>';}
+function aptFromSkill(sk){return sk<=2?0:sk<=4?1:sk<=6?2:sk<=8?3:4;}
+function promote(id,swapId){
+  const c=C();const m=c.members.find(x=>x.id===id);if(!m)return;
+  if(m.apt===undefined)m.apt=aptFromSkill(m.skill);
+  if(m.age===undefined)m.age=16+Math.floor(rnd()*15);
+  if(m.cult===undefined)m.cult=0;
+  if(inner().length>=INNER_CAP){
+    const d=inner().find(x=>x.id===swapId);if(!d)return;
+    c.inner=inner().filter(x=>x!==d);c.members=c.members.filter(x=>x!==m);
+    c.members.push(d);inner().push(m);addLoy(d,-30);
+    bio(d.name+'被降為普通弟子，'+m.name+'升為入室弟子');
+  }else{c.members=c.members.filter(x=>x!==m);inner().push(m);bio(m.name+'升為入室弟子');}
+  addLoy(m,20);c.members.forEach(x=>{if(x!==m)addLoy(x,-5);});
+  afterAction();
+  return m;
+}
+function demote(id){
+  const c=C();const d=inner().find(x=>x.id===id);if(!d)return false;
+  if(c.members.length>=capOf())return false;
+  c.inner=inner().filter(x=>x!==d);c.members.push(d);addLoy(d,-30);
+  inner().forEach(x=>addLoy(x,-5));bio(d.name+'被降為普通弟子');
+  afterAction();return true;
+}
+function loyTick(msgs){
+  const c=C();
+  inner().concat(c.members).slice().forEach(m=>{
+    const b=loyBase(m);const l=loy(m);if(l<b)addLoy(m,1);else if(l>b)addLoy(m,-.5);
+    if(loy(m)<15&&rnd()<.2){
+      c.members=c.members.filter(x=>x!==m);c.inner=inner().filter(x=>x!==m);
+      msgs.push(m.name+'對你心灰意冷，叛出師門');bio(m.name+'叛出師門');
+    }
+  });
+}
+function showSwap(id){
+  const m=C().members.find(x=>x.id===id);if(!m)return;
+  pop('<div class="pill-grade">升'+m.name+'為入室弟子</div><p>入室弟子已滿三個，要揀一個降做普通弟子對調。被降嗰個忠誠 −30，'+m.name+'忠誠 +20，其他普通弟子眼紅忠誠 −5。</p><div class="testers">'+
+    inner().map(d=>'<button class="btn tester" type="button" data-a="swap" data-id="'+id+'" data-sw="'+d.id+'"><b>同 '+d.name+' 對調</b><small>'+APT[d.apt].n+' · '+ROLES[d.role].n+' · 忠誠 '+Math.round(loy(d))+'</small></button>').join('')+'</div>');
+}
+
+
 /* ---------- 生平 ---------- */
 function LN(){const pl=P();if(!pl.n)pl.n={brews:0,booms:0,eats:0,earned:0,shidi:0,oldAge:0,best:-1,bestName:''};return pl.n;}
 function bio(t){const pl=P();if(!pl.bio)pl.bio=[];pl.bio.push({a:pl.age,t});if(pl.bio.length>60)pl.bio.splice(1,1);}
@@ -565,7 +612,7 @@ function genInner(apt){
 function canDraw(){return C().cert>=1;}
 function innerEffects(t){
   inner().forEach(d=>{
-    const p=PERS[d.pers],A=APT[d.apt].m*1.2;
+    const p=PERS[d.pers],A=APT[d.apt].m*1.2*loyMult(d);
     if(d.role==='zhu'){t.q+=d.skill*2*p.q*A;t.stab+=d.skill*1.5*p.s*A;t.helpers.push(d.name);if(p.wild)t.wild++;}
     if(d.role==='cai')t.disc+=d.skill*2*A;
     if(d.role==='ying')t.inc+=(10+d.skill*6)*A*(p.inc||1);
@@ -593,6 +640,7 @@ function yearTick(){
       if(d.realm>=5)d.cult=Math.min(d.cult,100);
       if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;LN().oldAge++;bio('入室弟子'+d.name+'壽終坐化');msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
+    loyTick(msgs);
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
       if(rnd()*100<ch){const m=genCand();m.cost=0;c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做普通弟子');}
@@ -622,9 +670,10 @@ function showDisciple(id){
     '<dt>壽命</dt><dd>'+d.age+' 歲 / 壽元 '+L+' 歲'+(L-d.age<15?' <span class="bad">（大限將至）</span>':'')+'</dd>'+
     '<dt>修為</dt><dd>'+REALMS[d.realm]+'期 <span class="meter wide"><i style="width:'+clamp(d.cult,0,100)+'%;background:var(--jade)"></i></span> '+Math.floor(d.cult)+'%</dd>'+
     '<dt>丹術</dt><dd>'+SKILL_N[d.skill]+'</dd>'+
+    '<dt>忠誠</dt><dd>'+loyTag(d)+' <span class="desc">'+(loy(d)<30?'心存不滿，做嘢效果減半':loy(d)>=80?'死心塌地，做嘢效果多一成':'安份守己')+'</span></dd>'+
     '<dt>任命</dt><dd>'+ROLES[d.role].n+'：'+ROLES[d.role].d+'</dd></dl>'+
     '<div class="label">改派工作</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="irole" data-id="'+d.id+'" data-r="'+k+'" aria-pressed="'+(d.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+
-    '<div class="more-row"><button class="btn" type="button" data-a="drawpop">再收徒（抽籤）</button><button class="btn danger" type="button" data-a="expel" data-id="'+d.id+'">逐出師門</button></div><div class="desc" id="popMsg"></div>');
+    '<div class="more-row"><button class="btn" type="button" data-a="drawpop">再收徒（抽籤）</button><button class="btn" type="button" data-a="demote" data-id="'+d.id+'"'+(C().members.length>=capOf()?' disabled title="普通弟子已滿"':' title="降做普通弟子：佢忠誠 −30，其他入室弟子 −5"')+'>降為普通弟子</button><button class="btn danger" type="button" data-a="expel" data-id="'+d.id+'">逐出師門</button></div><div class="desc" id="popMsg"></div>');
 }
 function showDraw(){
   const c=C();
@@ -662,6 +711,8 @@ function onPopClick(e){
   else if(a==='takeNormal'){const d=pendingDraw;if(!d)return;const c=C();if(c.members.length>=capOf())return;c.members.push({id:d.id,name:d.name,f:d.f,pers:d.pers,skill:d.skill,xp:0,realm:d.realm,role:'idle',cost:0});pendingDraw=null;closePop();afterAction();toast(d.name+'做咗普通弟子');}
   else if(a==='decline'){closePop();}
   else if(a==='irole'){const d=inner().find(x=>x.id===+b.dataset.id);if(d){d.role=b.dataset.r;persist();renderAll();showDisciple(d.id);}}
+  else if(a==='demote'){const id=+b.dataset.id;const d=inner().find(x=>x.id===id);if(demote(id)){closePop();toast(d.name+'被降為普通弟子，佢好唔開心');}}
+  else if(a==='swap'){const m=promote(+b.dataset.id,+b.dataset.sw);closePop();if(m)toast(m.name+'升為入室弟子');}
   else if(a==='expel'){
     if(b.dataset.armed){const id=+b.dataset.id;const d=inner().find(x=>x.id===id);C().inner=inner().filter(x=>x.id!==id);closePop();afterAction();if(d)toast(d.name+'被逐出師門，喊住落山');}
     else{b.dataset.armed='1';b.textContent='再撳一次確認逐出';}
@@ -979,10 +1030,11 @@ function team(){
   let zhu=0;
   c.members.forEach(m=>{
     const p=PERS[m.pers];
-    if(m.role==='zhu'&&zhu<2){zhu++;t.q+=m.skill*2*p.q;t.stab+=m.skill*1.5*p.s;t.helpers.push(m.name);if(p.wild)t.wild++;}
-    if(m.role==='cai')t.disc+=m.skill*2;
-    if(m.role==='ying')t.inc+=(10+m.skill*6)*(p.inc||1);
-    if(m.role==='chuan')t.pres+=m.skill*3;
+    const L=loyMult(m);
+    if(m.role==='zhu'&&zhu<2){zhu++;t.q+=m.skill*2*p.q*L;t.stab+=m.skill*1.5*p.s*L;t.helpers.push(m.name);if(p.wild)t.wild++;}
+    if(m.role==='cai')t.disc+=m.skill*2*L;
+    if(m.role==='ying')t.inc+=(10+m.skill*6)*(p.inc||1)*L;
+    if(m.role==='chuan')t.pres+=m.skill*3*L;
   });
   moTeam(t);innerEffects(t);
   if(c.aff==='xie')t.disc+=10;
@@ -1120,8 +1172,8 @@ function renderCareer(){
     h+='<div class="label" style="margin-top:8px">'+(c.aff==='own'?'徒弟':'師弟妹')+'（'+c.members.length+' / '+capOf()+'）</div><div class="mems">';
     if(!c.members.length)h+='<div class="desc">未有人，喺下面招募。</div>';
     c.members.forEach(m=>{
-      h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span><button class="ib" type="button" data-a="dis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
-         '<div class="desc">'+PERS[m.pers].d+'</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="role" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div></div>';
+      h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+'<button class="ib" type="button" data-a="dis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
+         '<div class="desc">'+PERS[m.pers].d+'</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="role" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+(canDraw()?'<button class="btn" type="button" data-a="promo" data-id="'+m.id+'" title="升為入室弟子：佢忠誠 +20，其他普通弟子 −5">升為入室弟子'+(inner().length>=INNER_CAP?'（要同人對調）':'')+'</button>':'')+'</div>';
     });
     h+='</div><div class="label" style="margin-top:8px;align-items:center">招募<button class="btn" type="button" data-a="refresh" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
     c.cands.forEach(m=>{
@@ -1136,7 +1188,7 @@ function onCareerClick(e){
   const a=b.dataset.a,id=+b.dataset.id;
   if(a==='exam')takeExam();else if(a==='xie')joinXie();else if(a==='sect')joinSect(b.dataset.id);
   else if(a==='own')createSect(($('sectName')||{}).value);else if(a==='rec')recruit(id);else if(a==='dis')dismiss(id);
-  else if(a==='role')setRole(id,b.dataset.r);else if(a==='prole')setPRole(id,b.dataset.r);else if(a==='free')release(id);else if(a==='refresh'){refreshCands(false);persist();renderAll();}
+  else if(a==='role')setRole(id,b.dataset.r);else if(a==='prole')setPRole(id,b.dataset.r);else if(a==='free')release(id);else if(a==='promo'){if(inner().length>=INNER_CAP){$('modal').hidden=true;showSwap(id);}else{const m=promote(id);if(m)carMsg(m.name+'升為入室弟子，其他普通弟子有啲眼紅。');}}else if(a==='refresh'){refreshCands(false);persist();renderAll();}
 }
 
 function unlockedSet(){const set=new Set(START);ACHS.forEach(a=>{if(save.ach.includes(a.id))a.u.forEach(k=>set.add(k));});return set;}
