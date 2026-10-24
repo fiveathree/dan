@@ -175,6 +175,24 @@ canvas{display:block;width:100%;height:100%}
 .codex span.unk{color:var(--dim)}
 .cheat{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .cheat input{background:var(--ink);border:1px solid var(--line);border-radius:4px;padding:5px 8px;color:var(--paper);font:inherit;min-width:0;flex:1;max-width:240px}
+.meter.wide{width:90px;display:inline-block;vertical-align:middle}
+.car-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.car-box{border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--panel2);display:flex;flex-direction:column;gap:5px;min-width:0}
+.car-title{font-family:var(--display);font-size:22px;color:var(--bronze);line-height:1.2}
+.car-act{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.car-act input{background:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px 8px;color:var(--paper);font:inherit;flex:1;min-width:0;max-width:200px}
+.sect-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px}
+.sect-list .btn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;white-space:normal}
+.sect-list small{font-size:11px;color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.mems{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
+.mem{border:1px solid var(--line);border-radius:4px;padding:6px 8px;background:var(--ink);display:flex;flex-direction:column;gap:4px;min-width:0}
+.mem.cand{border-style:dashed}
+.mem-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mem-h b{font-size:14px}
+.mem-h .ib{margin-left:auto}
+.mem .chip{padding:1px 6px;font-size:12px}
+.team-sum{color:var(--jade)}
 .toast{position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--bronze);padding:7px 14px;border-radius:4px;font-size:13.5px;z-index:40;max-width:calc(100vw - 32px);text-align:center}
 .shake{animation:shake .5s}
 @keyframes shake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-2px)}}
@@ -188,6 +206,7 @@ canvas{display:block;width:100%;height:100%}
     <div class="stats" id="stats"></div>
     <div class="hbtns">
       <button class="btn" id="task" type="button">下山斬妖</button>
+      <button class="btn" id="openCar" type="button">丹途</button>
       <button class="btn" id="openAch" type="button">成就</button>
     </div>
   </header>
@@ -242,6 +261,7 @@ canvas{display:block;width:100%;height:100%}
     <div class="mtabs">
       <button class="btn" type="button" id="mtAch" aria-selected="true">成就</button>
       <button class="btn" type="button" id="mtCodex" aria-selected="false">丹譜</button>
+      <button class="btn" type="button" id="mtCar" aria-selected="false">丹途門派</button>
       <span style="flex:1"></span>
       <button class="btn" type="button" id="mClose">關閉</button>
     </div>
@@ -361,18 +381,224 @@ const ACHS=[
   {id:'xian',n:'仙丹出世',d:'煉出仙品丹',c:s=>s.st.maxG>=5,u:[]},
   {id:'die',n:'重頭來過',d:'第一次身死道消',c:s=>s.lives>=2,u:[]},
   {id:'codexAll',n:'丹道宗師',d:'收錄全部丹藥',c:s=>s.codex.length>=ALL_PILLS.length,u:[]},
+  {id:'cert',n:'持證上崗',d:'考獲一品丹證',c:s=>s.st.maxCert>=1,u:[]},
+  {id:'cert5',n:'五品丹師',d:'考獲五品丹證',c:s=>s.st.maxCert>=5,u:[]},
+  {id:'join',n:'拜入山門',d:'加入門派',c:s=>s.st.joined>=1,u:[]},
+  {id:'own',n:'開宗立派',d:'創立自己嘅門派',c:s=>s.st.ownSect>=1,u:[]},
+  {id:'holy',n:'一方聖地',d:'門派升到聖地',c:s=>!!(s.player.car&&s.player.car.aff==='own'&&s.player.car.lvl>=4),u:[]},
+  {id:'many',n:'桃李滿門',d:'同時有 8 個徒弟',c:s=>!!(s.player.car&&s.player.car.members.length>=8),u:[]},
   {id:'fly',n:'白日飛升',d:'飛升仙界',c:s=>s.st.flew>=1,u:[]}
 ];
 function labelOf(key){const [t,id]=key.split(':');return TYPE_DATA[t][id].n;}
 
 /* ---------- 存檔 ---------- */
 const KEY='dan-sim-v2';
-function newPlayer(){return{realm:0,cult:0,tox:0,demon:0,age:16,lifeBonus:0,stones:600,alive:true};}
-function newSave(){return{player:newPlayer(),codex:[],shidi:0,lives:1,ach:[],cheat:false,st:{brews:0,booms:0,eats:0,maxG:0,maxRealm:0,earned:0,flew:0}};}
+function newPlayer(){return{realm:0,cult:0,tox:0,demon:0,age:16,lifeBonus:0,stones:600,alive:true,car:newCareer()};}
+function newSave(){return{player:newPlayer(),codex:[],shidi:0,lives:1,ach:[],cheat:false,st:{brews:0,booms:0,eats:0,maxG:0,maxRealm:0,earned:0,flew:0,maxCert:0,joined:0,ownSect:0}};}
 let save=newSave();
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.player){save=Object.assign(newSave(),s);save.st=Object.assign(newSave().st,s.st||{});}}}catch(e){}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
+
+/* ---------- 丹途：身份、門派、弟子 ---------- */
+const CERT=['無證','一品','二品','三品','四品','五品','六品','七品','八品','九品'];
+const SKILL_N=['未入門','一階','二階','三階','四階','五階','六階','七階','八階','九階','宗師'];
+const SECTS={
+  qingyun:{n:'青雲宗',d:'丹房有護爐陣，丹爐穩定 +6。'},
+  chixiao:{n:'赤霄門',d:'藏有火道秘本，丹藥品質 +6。'},
+  baicao:{n:'百草谷',d:'自家藥園，藥材八八折。'}
+};
+const SECT_LV=[
+  {n:'草廬',need:0,cap:3,disc:0,stab:0,inc:0,d:'可收 3 個徒弟。'},
+  {n:'小宗',need:120,cap:5,disc:5,stab:3,inc:20,d:'可收 5 個徒弟，藥材九五折，丹爐穩定 +3，每爐門派收入 20。'},
+  {n:'名門',need:350,cap:7,disc:10,stab:6,inc:50,d:'可收 7 個徒弟，藥材九折，丹爐穩定 +6，每爐收入 50，賣丹價錢 +20%。'},
+  {n:'大宗',need:800,cap:9,disc:15,stab:9,inc:90,d:'可收 9 個徒弟，藥材八五折，丹爐穩定 +9，每爐收入 90，招募到更高丹術嘅弟子。'},
+  {n:'聖地',need:1600,cap:12,disc:20,stab:12,inc:150,d:'可收 12 個徒弟，藥材八折，丹爐穩定 +12，每爐收入 150，壽元 +300。'}
+];
+const PERS={
+  wen:{n:'穩重',d:'助爐時丹爐特別穩',q:.8,s:1.6,g:1},
+  ji:{n:'急躁',d:'助爐時藥力強，但爐會唔穩',q:1.5,s:-.5,g:1},
+  tian:{n:'天才',d:'學嘢快，乜都做得好',q:1.3,s:1.3,g:2},
+  lan:{n:'懶散',d:'做嘢求其，進步慢',q:.5,s:.5,g:.5},
+  tan:{n:'貪財',d:'營運賺得多，但間中袋袋平安',q:1,s:1,g:1,inc:1.6},
+  qi:{n:'好奇',d:'助爐時有驚喜亦有驚嚇',q:1,s:1,g:1.2,wild:true}
+};
+const ROLES={zhu:{n:'助爐',d:'幫手煉丹，提升丹品同穩定（最多兩個生效）'},cai:{n:'採藥',d:'藥材減價'},ying:{n:'營運',d:'每爐帶來靈石收入'},chuan:{n:'傳功',d:'教其他弟子，自創門派時加聲望'},idle:{n:'閒置',d:'乜都唔做'}};
+const SURN='林張陳李王蘇葉白柳雲秦沈趙何方韓';
+const GIVEN=[['清風',0],['明月',1],['靈兒',1],['鐵柱',0],['二狗',0],['若水',1],['不凡',0],['子軒',0],['婉兒',1],['大頭',0],['小翠',1],['阿福',0],['紫煙',1],['無忌',0],['寶珠',1],['石頭',0]];
+function newCareer(){return{skill:0,sxp:0,cert:0,aff:null,sect:null,sectName:'',lvl:0,pres:0,members:[],cands:[],nid:1};}
+function C(){const pl=P();if(!pl.car)pl.car=newCareer();return pl.car;}
+function skillNeed(lv){return 20+lv*15;}
+function capOf(){const c=C();return c.aff==='own'?SECT_LV[c.lvl].cap:c.aff==='sect'?4:c.aff==='xie'?2:0;}
+function juniorWord(m){const c=C();return c.aff==='own'?'徒弟':(m&&m.f?'師妹':'師弟');}
+function titleOf(){
+  const c=C();const cert=c.cert?CERT[c.cert]+'丹師':'散修煉丹師';
+  if(c.aff==='own')return c.sectName+'掌門';
+  if(c.aff==='sect')return SECTS[c.sect].n+' · '+cert;
+  if(c.aff==='xie')return'丹協 · '+cert;
+  return cert;
+}
+function team(){
+  const c=C();const t={q:0,stab:0,disc:0,inc:0,pres:0,helpers:[],wild:0};
+  let zhu=0;
+  c.members.forEach(m=>{
+    const p=PERS[m.pers];
+    if(m.role==='zhu'&&zhu<2){zhu++;t.q+=m.skill*2*p.q;t.stab+=m.skill*1.5*p.s;t.helpers.push(m.name);if(p.wild)t.wild++;}
+    if(m.role==='cai')t.disc+=m.skill*2;
+    if(m.role==='ying')t.inc+=(10+m.skill*6)*(p.inc||1);
+    if(m.role==='chuan')t.pres+=m.skill*3;
+  });
+  if(c.aff==='xie')t.disc+=10;
+  if(c.aff==='sect'){if(c.sect==='baicao')t.disc+=12;if(c.sect==='qingyun')t.stab+=6;if(c.sect==='chixiao')t.q+=6;t.inc+=30;}
+  if(c.aff==='own'){const L=SECT_LV[c.lvl];t.disc+=L.disc;t.stab+=L.stab;t.inc+=L.inc;}
+  t.disc=Math.min(t.disc,45);
+  t.q+=c.skill*3;t.stab+=c.skill*1.5;
+  return t;
+}
+function genCand(){
+  const c=C();const top=c.aff==='own'?3+c.lvl+(c.lvl>=3?2:0):c.aff==='sect'?5:3;
+  const skill=1+Math.floor(rnd()*top);
+  const pk=Object.keys(PERS);const pers=pk[Math.floor(rnd()*pk.length)];
+  const g=GIVEN[Math.floor(rnd()*GIVEN.length)];
+  const realm=rnd()<.15?2:rnd()<.4?1:0;
+  return{id:c.nid++,name:SURN[Math.floor(rnd()*SURN.length)]+g[0],f:g[1],pers,skill:Math.min(10,skill+(pers==='tian'?1:0)),xp:0,realm,role:'idle',cost:40+skill*35+realm*60};
+}
+function refreshCands(free){
+  const c=C();if(!c.aff)return;
+  if(!free){if(P().stones<20){toast('靈石唔夠');return;}P().stones-=20;}
+  c.cands=[genCand(),genCand(),genCand()];
+}
+function careerAfterBrew(grade,exploded){
+  const c=C();const t=team();const msgs=[];
+  // 丹術
+  const xp=exploded?3:5+grade*5;
+  c.sxp+=xp;
+  while(c.skill<10&&c.sxp>=skillNeed(c.skill)){c.sxp-=skillNeed(c.skill);c.skill++;msgs.push('丹術提升到「'+SKILL_N[c.skill]+'」');}
+  // 收入
+  let inc=Math.round(t.inc);
+  c.members.forEach(m=>{if(m.role==='ying'&&m.pers==='tan'&&rnd()<.2){const k=Math.round((10+m.skill*6)*.8);inc-=k;msgs.push(m.name+'袋袋平安，私吞咗 '+k+' 靈石');}});
+  if(inc>0){P().stones+=inc;msgs.push((c.aff==='sect'?'門派月俸同營運':'營運')+'收入 '+inc+' 靈石');}
+  // 弟子成長
+  const chuan=c.members.filter(m=>m.role==='chuan').length;
+  c.members.forEach(m=>{
+    const base=m.role==='zhu'?4:m.role==='idle'?.5:2;
+    m.xp+=(base+(m.role==='chuan'?0:chuan))*PERS[m.pers].g;
+    while(m.skill<10&&m.xp>=(m.skill+1)*8){m.xp-=(m.skill+1)*8;m.skill++;msgs.push(m.name+'丹術升到'+SKILL_N[m.skill]);}
+  });
+  if(exploded&&t.helpers.length&&rnd()<.5)msgs.push(t.helpers[0]+'被炸到成面黑，但冇大礙');
+  // 聲望
+  if(c.aff==='own'){
+    const pr=Math.round((exploded?0:grade*grade*3)+t.pres);c.pres+=pr;if(pr>0)msgs.push('門派聲望 +'+pr);
+    while(c.lvl<SECT_LV.length-1&&c.pres>=SECT_LV[c.lvl+1].need){c.lvl++;msgs.push(c.sectName+'晉升為「'+SECT_LV[c.lvl].n+'」！');if(c.lvl===4)P().lifeBonus+=300;}
+  }
+  if(!c.cands.length&&c.aff)refreshCands(true);
+  return msgs;
+}
+function examReq(r){
+  const need=[];
+  if(C().skill<r)need.push('丹術'+SKILL_N[r]);
+  if(r>=4&&P().realm<1)need.push('築基期');
+  if(r>=7&&P().realm<2)need.push('金丹期');
+  return need;
+}
+function takeExam(){
+  const c=C();const r=c.cert+1;if(r>9)return;
+  const fee=80*r;const need=examReq(r);
+  if(need.length){carMsg('未夠資格：要'+need.join('、'));return;}
+  if(P().stones<fee){carMsg('報名費要 '+fee+' 靈石');return;}
+  P().stones-=fee;
+  const chance=clamp(.6+(c.skill-r)*.15,.2,.95);
+  if(rnd()<chance){c.cert=r;save.st.maxCert=Math.max(save.st.maxCert||0,r);carMsg('考官點頭：恭喜你考獲「'+CERT[r]+'丹證」！');}
+  else carMsg('考試時手震，炸咗考場個爐。考官搖頭，下次再嚟。（合格機會約 '+Math.round(chance*100)+'%）');
+  afterAction();
+}
+function joinXie(){const c=C();if(c.cert<1){carMsg('要有一品丹證先可以加入煉丹協會');return;}c.aff='xie';refreshCands(true);carMsg('你加入咗煉丹協會：藥材九折，賣丹多一成，可招募 2 個師弟妹。');afterAction();}
+function joinSect(id){
+  const c=C();if(c.cert<3||P().realm<1){carMsg('要三品丹證同築基期先有門派肯收你');return;}
+  c.aff='sect';c.sect=id;save.st.joined=1;c.members=c.members.slice(0,4);refreshCands(true);
+  carMsg('你拜入'+SECTS[id].n+'，成為丹房弟子。'+SECTS[id].d+'每爐有 30 靈石月俸。');afterAction();
+}
+function createSect(name){
+  const c=C();name=(name||'').trim().slice(0,8)||'九轉宗';
+  if(c.cert<5||P().realm<2){carMsg('要五品丹證同金丹期先可以開宗立派');return;}
+  if(P().stones<3000){carMsg('開山建派要 3000 靈石');return;}
+  P().stones-=3000;c.aff='own';c.sectName=name;c.lvl=0;c.pres=0;c.members.forEach(m=>{if(m.role==='idle')m.role='idle';});
+  refreshCands(true);save.st.ownSect=1;carMsg('你喺山頭插旗，「'+name+'」正式開宗立派！');afterAction();
+}
+function recruit(id){
+  const c=C();const m=c.cands.find(x=>x.id===id);if(!m)return;
+  if(c.members.length>=capOf()){carMsg('人數已滿（上限 '+capOf()+'）');return;}
+  if(P().stones<m.cost){carMsg('靈石唔夠，要 '+m.cost);return;}
+  P().stones-=m.cost;c.cands=c.cands.filter(x=>x.id!==id);c.members.push(m);
+  carMsg(m.name+'加入，做你'+juniorWord(m)+'。');afterAction();
+}
+function dismiss(id){const c=C();const m=c.members.find(x=>x.id===id);c.members=c.members.filter(x=>x.id!==id);if(m)carMsg(m.name+'執包袱落山。');afterAction();}
+function setRole(id,r){const m=C().members.find(x=>x.id===id);if(m){m.role=r;persist();renderAll();}}
+function carMsg(t){$('mMsg').textContent=t;}
+
+function renderCareer(){
+  const c=C();const pl=P();const r=c.cert+1;
+  const bar=(v,max)=>'<span class="meter wide"><i style="width:'+clamp(v/max*100,0,100)+'%;background:var(--bronze)"></i></span>';
+  let h='<div class="car-grid">';
+  // 身份
+  h+='<div class="car-box"><div class="label">身份</div><div class="car-title">'+titleOf()+'</div>'+
+     '<div class="desc">丹術 '+SKILL_N[c.skill]+' '+(c.skill<10?bar(c.sxp,skillNeed(c.skill))+' '+Math.floor(c.sxp)+'/'+skillNeed(c.skill):'')+'</div>'+
+     '<div class="desc">丹術每升一階：丹品 +3，丹爐穩定 +1.5。每煉一爐都會累積經驗。</div>';
+  if(r<=9){const need=examReq(r);h+='<div class="car-act"><button class="btn" type="button" data-a="exam" '+(need.length?'disabled':'')+'>考'+CERT[r]+'丹證（'+(80*r)+' 靈石）</button><span class="desc">'+(need.length?'要：'+need.join('、'):'合格機會約 '+Math.round(clamp(.6+(c.skill-r)*.15,.2,.95)*100)+'%')+'</span></div>';}
+  // 路
+  if(!c.aff){
+    h+='<div class="car-act"><button class="btn" type="button" data-a="xie" '+(c.cert<1?'disabled':'')+'>加入煉丹協會</button><span class="desc">要一品丹證</span></div>';
+  }
+  if(c.aff!=='sect'&&c.aff!=='own'){
+    h+='<div class="label" style="margin-top:4px">拜入門派（要三品丹證、築基期）</div><div class="sect-list">'+Object.entries(SECTS).map(([id,s])=>'<button class="btn" type="button" data-a="sect" data-id="'+id+'" '+(c.cert<3||pl.realm<1?'disabled':'')+'><b>'+s.n+'</b><small>'+s.d+'</small></button>').join('')+'</div>';
+  }
+  if(c.aff!=='own'){
+    const ok=c.cert>=5&&pl.realm>=2;
+    h+='<div class="label" style="margin-top:4px">開宗立派（要五品丹證、金丹期、3000 靈石）</div><div class="car-act"><input id="sectName" type="text" maxlength="8" placeholder="門派名，例如九轉宗" '+(ok?'':'disabled')+'><button class="btn" type="button" data-a="own" '+(ok?'':'disabled')+'>開宗立派</button></div>';
+  }
+  h+='</div>';
+  // 門派
+  h+='<div class="car-box">';
+  if(c.aff==='own'){
+    const L=SECT_LV[c.lvl],N=SECT_LV[c.lvl+1];
+    h+='<div class="label">門派</div><div class="car-title">'+c.sectName+' · '+L.n+'</div>'+
+       '<div class="desc">聲望 '+Math.round(c.pres)+(N?' / '+N.need+' '+bar(c.pres,N.need):'（已達頂級）')+'</div>'+
+       '<div class="desc">現時好處：'+L.d+'</div>'+(N?'<div class="desc">下一級「'+N.n+'」：'+N.d+'</div>':'')+
+       '<div class="desc">聲望來源：煉出高品丹（品級越高越多）、傳功弟子。</div>';
+  }else if(c.aff){
+    const t=team();
+    h+='<div class="label">所屬</div><div class="car-title">'+(c.aff==='xie'?'煉丹協會':SECTS[c.sect].n)+'</div><div class="desc">'+(c.aff==='xie'?'藥材九折，賣丹多一成。':SECTS[c.sect].d+'每爐月俸 30 靈石。')+'</div>';
+  }else{
+    h+='<div class="label">門派</div><div class="desc">未有所屬。考到一品丹證就可以加入煉丹協會，之後可以招募師弟妹幫手。</div>';
+  }
+  if(c.aff){
+    const t=team();
+    h+='<div class="desc team-sum">團隊加成：丹品 +'+Math.round(t.q)+'　穩定 +'+Math.round(t.stab)+'　藥材 −'+Math.round(t.disc)+'%　每爐收入 '+Math.round(t.inc)+'</div>';
+  }
+  h+='</div></div>';
+  if(c.aff){
+    h+='<div class="label" style="margin-top:8px">'+(c.aff==='own'?'徒弟':'師弟妹')+'（'+c.members.length+' / '+capOf()+'）</div><div class="mems">';
+    if(!c.members.length)h+='<div class="desc">未有人，喺下面招募。</div>';
+    c.members.forEach(m=>{
+      h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span><button class="ib" type="button" data-a="dis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
+         '<div class="desc">'+PERS[m.pers].d+'</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="role" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div></div>';
+    });
+    h+='</div><div class="label" style="margin-top:8px;align-items:center">招募<button class="btn" type="button" data-a="refresh" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
+    c.cands.forEach(m=>{
+      h+='<div class="mem cand"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span></div><div class="desc">'+PERS[m.pers].d+'</div><button class="btn" type="button" data-a="rec" data-id="'+m.id+'" '+(c.members.length>=capOf()?'disabled':'')+'>招募（'+m.cost+' 靈石）</button></div>';
+    });
+    h+='</div><div class="desc" style="margin-top:6px">崗位：'+Object.values(ROLES).map(o=>o.n+'＝'+o.d).join('；')+'。</div>';
+  }
+  $('mBody').innerHTML=h;
+}
+function onCareerClick(e){
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
+  const a=b.dataset.a,id=+b.dataset.id;
+  if(a==='exam')takeExam();else if(a==='xie')joinXie();else if(a==='sect')joinSect(b.dataset.id);
+  else if(a==='own')createSect(($('sectName')||{}).value);else if(a==='rec')recruit(id);else if(a==='dis')dismiss(id);
+  else if(a==='role')setRole(id,b.dataset.r);else if(a==='refresh'){refreshCands(false);persist();renderAll();}
+}
+
 function unlockedSet(){const set=new Set(START);ACHS.forEach(a=>{if(save.ach.includes(a.id))a.u.forEach(k=>set.add(k));});return set;}
 let UNL=unlockedSet();
 const isUnl=(t,id)=>save.cheat||UNL.has(t+':'+id);
@@ -419,7 +645,7 @@ function renderRecipe(){
   const a=analyse();
   $('heatHint').textContent=cfg.art==='shenshi'&&cfg.order.length?('神識感應：此爐火候宜「'+CN[a.ideal]+'」左右。'):'';
   $('furnName').textContent=FURN[cfg.furn].n;
-  $('fireName').textContent=FIRES[cfg.fire].n+' · 火候'+CN[cfg.heat];
+  {const h=team().helpers;$('fireName').textContent=FIRES[cfg.fire].n+' · 火候'+CN[cfg.heat]+(h.length?' · 助爐：'+h.join('、'):'');}
 }
 
 /* ---------- 渲染：藥櫃與順序 ---------- */
@@ -454,7 +680,7 @@ function renderShelf(){
   $('yyNeedle').style.left=clamp(50+a.yy*4,3,97)+'%';
   $('cost').innerHTML='開銷 <b>'+costOf()+'</b> / '+P().stones+' 石';
 }
-function costOf(){return cfg.order.reduce((s,id)=>s+ING[id].p,0)+FURN[cfg.furn].cost;}
+function costOf(){return Math.round(cfg.order.reduce((s,id)=>s+ING[id].p,0)*(1-team().disc/100))+FURN[cfg.furn].cost;}
 
 /* ---------- 核心演算 ---------- */
 function analyse(){
@@ -515,8 +741,9 @@ function analyse(){
   let heatQ=0;
   if(dev>0){stab-=dev*9*half;heatQ-=dev*4*half;}
   if(dev<0)heatQ-=Math.abs(dev)*8*half;
-  const Q=pot*2.2+syn+fit+A.pow+F.q+K.q+heatQ;
-  const S=55+K.stab+A.stab+F.stab+stab-Math.abs(yy)*2.5-(cfg.path==='du'?0:tox*1.2);
+  const tm=team();
+  const Q=pot*2.2+syn+fit+A.pow+F.q+K.q+heatQ+tm.q;
+  const S=55+tm.stab+K.stab+A.stab+F.stab+stab-Math.abs(yy)*2.5-(cfg.path==='du'?0:tox*1.2);
   const boom=n?clamp((45-S)*2,0,95):0;
   const dom=ELK.reduce((a,k)=>el[k]>el[a]?k:a,'m');
   return{el,yy,tox,Q,S,boom,ideal,dev,dom,notes,flags,demon,n};
@@ -582,6 +809,9 @@ function brew(){
   const exploded=rnd()*100<a.boom;
   const boomTurn=exploded?3+Math.floor(rnd()*6):99;
   a.notes.forEach(([c,m])=>log('爐前',m,c));
+  const tm=team();
+  if(tm.helpers.length)log('助爐',tm.helpers.join('、')+'幫手睇火','good');
+  if(tm.wild){const w=(rnd()*22-8)*tm.wild;a.Q+=w;log('助爐',w>0?'好奇嘅弟子偷偷加料，竟然有奇效':'好奇嘅弟子偷偷加料，搞到一鑊粥',w>0?'good':'bad');}
   let i=0;
   const step=()=>{
     if(i===boomTurn){finish(a,true);return;}
@@ -616,12 +846,14 @@ function finish(a,exploded){
     else{
       const hurt=Math.round(5+rnd()*10);P().cult=Math.max(0,P().cult-hurt);P().tox=clamp(P().tox+5,0,200);
       log('後果','眉毛燒剩一半，修為 −'+hurt+'%，吸咗啲毒煙','bad');
+      careerAfterBrew(0,true).forEach(m=>log('丹途',m,'good'));
       busy=false;afterAction();return;
     }
   }else current=makePill(a,false);
   log('開爐','得到：'+current.name+'（'+current.gradeName+'）','good');
   save.st.maxG=Math.max(save.st.maxG,current.grade);
   if(!save.codex.includes(current.name)){save.codex.push(current.name);toast('丹譜新增：'+current.name);}
+  careerAfterBrew(current.grade,exploded).forEach(m=>log('丹途',m,'good'));
   busy=false;afterAction();if(P().alive&&current)showPill();
 }
 function makePill(a,phoenix){
@@ -678,7 +910,7 @@ function showOutcome(title,lines,fx){
   openOverlay('<div class="pill-grade">'+title+'</div><div class="outcome">'+lines.map(([t,c])=>'<p'+(c?' class="'+c+'"':'')+'>'+t+'</p>').join('')+(fx?'<p class="fx">'+fx+'</p>':'')+'</div><button class="btn close" type="button" id="aClose">返去丹爐</button>');
   $('aClose').onclick=closeOverlay;
 }
-function sellValue(p){let v=[1,30,90,250,700,2000][p.grade];if(p.path==='mo'||p.path==='du')v*=1.3;if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;return Math.round(v);}
+function sellValue(p){let v=[1,30,90,250,700,2000][p.grade];if(p.path==='mo'||p.path==='du')v*=1.3;if(['raw','burnt','meng','chicken'].includes(p.kind))v*=.5;if(p.kind==='waste')v=1;const c=C();if(c.aff==='xie')v*=1.1;if(c.aff==='own'&&c.lvl>=2)v*=1.2;return Math.round(v);}
 
 /* ---------- 食丹後果 ---------- */
 function effects(p,realm){
@@ -776,12 +1008,14 @@ function renderStats(){
   const m=(v,c)=>'<span class="meter"><i style="width:'+clamp(v,0,100)+'%;background:'+c+'"></i></span>';
   $('stats').innerHTML=
     '<span class="stat"><span class="realm">'+REALMS[pl.realm]+'</span></span>'+
+    '<span class="stat"><span class="k">'+titleOf()+'</span><b>丹術'+SKILL_N[C().skill]+'</b></span>'+
     '<span class="stat"><span class="k">修為</span>'+m(pl.cult,'var(--jade)')+'<b>'+Math.round(pl.cult)+'%</b></span>'+
     '<span class="stat"><span class="k">毒</span>'+m(pl.tox,'#7cc04a')+'<b>'+Math.round(pl.tox)+'</b></span>'+
     '<span class="stat"><span class="k">心魔</span>'+m(pl.demon,'var(--cinnabar)')+'<b>'+Math.round(pl.demon)+'</b></span>'+
     '<span class="stat"><span class="k">年歲</span><b>'+pl.age+'/'+(ls>9000?'∞':ls)+'</b></span>'+
     '<span class="stat"><span class="k">靈石</span><b>'+pl.stones+'</b></span>'+
     '<span class="stat"><span class="k">已故師弟</span><b>'+save.shidi+'</b></span>';
+  {const c=C();$('openCar').textContent=c.aff==='own'?c.sectName:c.aff==='sect'?SECTS[c.sect].n:c.aff==='xie'?'丹協':'丹途';}
   $('openAch').textContent='成就 '+save.ach.length+'/'+ACHS.length+(save.cheat?'・秘':'');
 }
 function renderAll(){
@@ -795,7 +1029,8 @@ function renderAll(){
 /* ---------- 成就／丹譜彈窗 ---------- */
 let mTab='ach';
 function renderModal(){
-  $('mtAch').setAttribute('aria-selected',mTab==='ach');$('mtCodex').setAttribute('aria-selected',mTab==='codex');
+  $('mtAch').setAttribute('aria-selected',mTab==='ach');$('mtCodex').setAttribute('aria-selected',mTab==='codex');$('mtCar').setAttribute('aria-selected',mTab==='car');
+  if(mTab==='car'){$('mTitle').innerHTML='丹途門派<span>'+titleOf()+'</span>';renderCareer();return;}
   if(mTab==='ach'){
     $('mTitle').innerHTML='成就<span>已達成 '+save.ach.length+' / '+ACHS.length+'　第 '+save.lives+' 世</span>';
     $('mBody').innerHTML='<div class="achs">'+ACHS.map(a=>{const ok=save.ach.includes(a.id);return'<div class="ach'+(ok?'':' no')+'"><b>'+a.n+'</b><small>'+a.d+'</small>'+(a.u.length?'<span class="u">'+(ok?'已解鎖：'+a.u.map(labelOf).join('、'):'解鎖 '+a.u.length+' 項新選項')+'</span>':'')+'</div>';}).join('')+'</div>';
@@ -804,15 +1039,19 @@ function renderModal(){
     $('mBody').innerHTML='<div class="codex">'+ALL_PILLS.map(n=>save.codex.includes(n)?'<span>'+n+'</span>':'<span class="unk">'+'？'.repeat(n.length)+'</span>').join('')+'</div>';
   }
 }
-$('openAch').onclick=()=>{$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
+$('openAch').onclick=()=>{mTab='ach';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
 $('mClose').onclick=()=>{$('modal').hidden=true;};
 $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').hidden=true;};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').hidden=true;});
 $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
+$('mtCar').onclick=()=>{mTab='car';$('mMsg').textContent='';renderModal();};
+$('openCar').onclick=()=>{mTab='car';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
+$('mBody').addEventListener('click',e=>{if(mTab==='car')onCareerClick(e);});
 function cheat(){
   const v=$('cheatIn').value.trim();$('cheatIn').value='';
   if(v==='急急如律令'){save.cheat=true;persist();renderAll();$('mMsg').textContent='天門大開：所有丹道、心法、火種、丹爐同藥材已經全部解鎖。';}
+  else if(v==='丹道通神'){const c=C();c.skill=10;c.sxp=0;c.cert=9;save.st.maxCert=9;const pl=P();if(pl.realm<2){pl.realm=2;pl.cult=0;save.st.maxRealm=Math.max(save.st.maxRealm,2);}afterAction();$('mMsg').textContent='你忽然開竅：丹術宗師、九品丹證、金丹期。';}
   else if(v==='點石成金'){P().stones+=10000;persist();renderAll();$('mMsg').textContent='袋入面多咗 10000 靈石。';}
   else $('mMsg').textContent='咒語無效，乜都冇發生。';
 }
