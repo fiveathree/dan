@@ -221,6 +221,8 @@ canvas{display:block;width:100%;height:100%}
 .mem-h .ib{margin-left:auto}
 .mem .chip{padding:1px 6px;font-size:12px}
 .team-sum{color:var(--jade)}
+.visit{color:var(--jade);font-weight:600}
+.mem.visitor{border-color:var(--jade)}
 .tbl-wrap{overflow-x:auto}
 .mkt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 .mkt th{font-weight:400;color:var(--muted);text-align:left;font-size:12px;letter-spacing:.1em}
@@ -1055,9 +1057,11 @@ function yearTick(){
       if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;LN().oldAge++;bio('入室弟子'+d.name+'壽終坐化');msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
     loyTick(msgs);dlTick(msgs);marketDecay();priceTick();roomDecay(msgs);
-    if(c.aff&&!MO().on&&c.members.length<capOf()){
+    if(!c.visitors)c.visitors=[];
+    c.visitors=c.visitors.filter(v=>{v.wait--;if(v.wait<=0){msgs.push(v.name+'等唔到你回覆，失望離開');return false;}return true;});
+    if(c.aff&&!MO().on&&c.visitors.length<3){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
-      if(rnd()*100<ch){const m=genCand();m.cost=0;m.fame=1;m.loy=80+Math.floor(rnd()*16);c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做記名弟子（忠誠 '+m.loy+'）');bio(m.name+'慕名而嚟拜師');}
+      if(rnd()*100<ch){const m=genCand();m.cost=0;m.fame=1;m.loy=80+Math.floor(rnd()*16);m.apt=aptFromSkill(m.skill);m.wait=3;c.visitors.push(m);msgs.push(m.name+'慕名而嚟求見，撳「記名」格睇吓收唔收');}
     }
   }
   if(msgs.length)toast(msgs.join('；'),5000);
@@ -1071,7 +1075,7 @@ function renderInner(){
   h+='<button class="dz" type="button" data-cell="dl" style="--apt:'+(d?(d.kind==='mo'?'var(--cinnabar)':'var(--jade)'):'var(--line)')+'">'+
      '<span class="dz-av">'+(d?d.name[0]:'♥')+'</span><span class="dz-tx"><b>道侶 '+(d?1:0)+'/1</b><small>'+(d?d.name+' ♥'+Math.round(d.aff):'靠奇遇結識')+'</small></span></button>';
   h+='<button class="dz" type="button" data-cell="inner"><span class="dz-stack">'+(L.length?av(L,3):'<span class="dz-av">＋</span>')+'</span><span class="dz-tx"><b>入室 '+L.length+'/'+ic+'</b><small>'+(L.length?L.map(x=>x.name).join('、'):(canDraw()?'收徒抽籤':'要一品丹證'))+'</small></span></button>';
-  h+='<button class="dz" type="button" data-cell="jm"><span class="dz-stack">'+(c.members.length?av(c.members,3):'<span class="dz-av">＋</span>')+'</span><span class="dz-tx"><b>記名 '+c.members.length+'/'+mc+'</b><small>'+(c.aff?(c.members.length?c.members.filter(m=>m.role!=='idle').length+' 人有崗位':'招募記名弟子'):'加入丹會後可收')+'</small></span></button>';
+  h+='<button class="dz" type="button" data-cell="jm"><span class="dz-stack">'+(c.members.length?av(c.members,3):'<span class="dz-av">＋</span>')+'</span><span class="dz-tx"><b>記名 '+c.members.length+'/'+mc+'</b><small>'+((c.visitors||[]).length?'<span class="visit">'+c.visitors.length+' 人慕名求見</span>':c.aff?(c.members.length?c.members.filter(m=>m.role!=='idle').length+' 人有崗位':'招募記名弟子'):'加入丹會後可收')+'</small></span></button>';
   $('innerRow').innerHTML=h;
 }
 function showInnerList(){
@@ -1086,6 +1090,17 @@ function showInnerList(){
 function showJiming(msg){
   const c=C();const mc=capOf();
   let h='<div class="pill-grade">記名弟子 '+c.members.length+' / '+mc+'</div>';
+  const V=c.visitors||[];
+  if(V.length){
+    h+='<div class="label">慕名求見（'+V.length+'）<em>佢哋最多等三年</em></div><div class="mems">';
+    V.forEach(v=>{const A=APT[v.apt];
+      h+='<div class="mem visitor"><div class="mem-h"><b>'+v.name+'</b><span class="tag" style="border-color:'+A.c+';color:'+A.c+'">資質 '+A.n+'</span><span class="tag">'+PERS[v.pers].n+'</span><span class="desc">'+REALMS[v.realm]+' · 丹術'+SKILL_N[v.skill]+' · 仲等 '+v.wait+' 年</span></div>'+
+        '<div class="desc">'+PERS[v.pers].d+'。慕你之名而嚟，忠誠 '+v.loy+'。</div><div class="draw-acts">'+
+        '<button class="btn" type="button" data-a="vacc" data-id="'+v.id+'"'+(c.members.length>=mc?' disabled title="記名弟子已滿"':'')+'>收做記名弟子</button>'+
+        '<button class="btn" type="button" data-a="vinn" data-id="'+v.id+'"'+(!canDraw()||inner().length>=innerCap()?' disabled title="要一品丹證同入室有空位"':'')+'>收做入室弟子</button>'+
+        '<button class="btn" type="button" data-a="vrej" data-id="'+v.id+'">婉拒</button></div></div>';});
+    h+='</div><div class="label">記名弟子</div>';
+  }
   if(!c.aff){pop(h+'<p>記名弟子要加入煉丹協會、門派或者自創門派之後先可以收。魔頭擄返嚟嘅凡人喺丹途分頁嘅牢房。</p>');return;}
   h+='<div class="mems">';
   if(!c.members.length)h+='<div class="desc">未有記名弟子。</div>';
@@ -1159,6 +1174,14 @@ function onPopClick(e){
   else if(a==='jrec'){const c=C();const m=c.cands.find(x=>x.id===+b.dataset.id);if(m&&c.members.length<capOf()&&P().stones>=m.cost){P().stones-=m.cost;c.cands=c.cands.filter(x=>x!==m);c.members.push(m);afterAction();showJiming(m.name+'加入做記名弟子。');}}
   else if(onLoyClick(a,b)){}
   else if(a==='jmback')showJiming();
+  else if(a==='vacc'||a==='vinn'||a==='vrej'){
+    const c=C();const v=(c.visitors||[]).find(x=>x.id===+b.dataset.id);if(!v)return;
+    c.visitors=c.visitors.filter(x=>x!==v);delete v.wait;let msg='';
+    if(a==='vacc'&&c.members.length<capOf()){c.members.push(v);bio(v.name+'慕名而嚟，收做記名弟子');msg=v.name+'拜入門下做記名弟子。';}
+    else if(a==='vinn'&&canDraw()&&inner().length<innerCap()){v.age=v.age||16+Math.floor(rnd()*15);v.cult=0;inner().push(v);bio(v.name+'慕名而嚟，收做入室弟子');msg=v.name+'成為入室弟子，感激涕零。';}
+    else{msg='你婉拒咗'+v.name+'，佢拱一拱手就落山去。';}
+    afterAction();showJiming(msg);
+  }
   else if(a==='jref'){refreshCands(false);persist();renderAll();showJiming();}
   else if(a==='jpromo'){const id=+b.dataset.id;if(inner().length>=innerCap())showSwap(id);else{const m=promote(id);showJiming(m?m.name+'升為入室弟子，其他記名弟子有啲眼紅。':'');}}
   else if(a==='drawpop')showDraw();
