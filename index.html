@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>九轉丹房</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1210'/%3E%3Cpath d='M22 12v10M42 12v10' stroke='%23c9a15a' stroke-width='5'/%3E%3Cpath d='M10 22h44v4l-5 20H15l-5-20z' fill='%23c9a15a'/%3E%3Cpath d='M19 46v9M45 46v9' stroke='%23c9a15a' stroke-width='5'/%3E%3Cpath d='M32 28c-6 5-7 10-3 14 0-3 2-4 3-6 2 2 3 4 1 6 5-2 6-9-1-14z' fill='%23de4e2f'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -148,6 +149,7 @@ canvas{display:block;width:100%;height:100%}
   .ing .meta{font-size:9.5px}
   .dock{padding:6px 8px;gap:4px}
   .wx{flex:1 1 100%}
+  #dockBook{display:none}
   .go{margin-left:auto}
   .rate b{font-size:19px}
   .hbtns{flex-wrap:wrap}
@@ -201,6 +203,11 @@ canvas{display:block;width:100%;height:100%}
 .mem-h .ib{margin-left:auto}
 .mem .chip{padding:1px 6px;font-size:12px}
 .team-sum{color:var(--jade)}
+.recs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px}
+.rec{border:1px solid var(--line);border-radius:4px;padding:6px 8px;background:var(--panel2);display:flex;flex-direction:column;gap:3px;min-width:0}
+.rec .mem-h b{font-family:var(--display);font-weight:400;font-size:19px;color:#fff0d4}
+.desc.bad{color:#f08a6c}
+.dock-row .btn{padding:2px 8px}
 .toast{position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--bronze);padding:7px 14px;border-radius:4px;font-size:13.5px;z-index:40;max-width:calc(100vw - 32px);text-align:center}
 .shake{animation:shake .5s}
 @keyframes shake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-2px)}}
@@ -215,6 +222,8 @@ canvas{display:block;width:100%;height:100%}
     <div class="hbtns">
       <button class="btn" id="task" type="button">下山斬妖</button>
       <button class="btn" id="herb" type="button">上山採藥</button>
+      <button class="btn" id="openBook" type="button">丹書</button>
+      <button class="btn" id="openShop" type="button">商行</button>
       <button class="btn" id="openCar" type="button">丹途</button>
       <button class="btn" id="openAch" type="button">成就</button>
     </div>
@@ -243,7 +252,7 @@ canvas{display:block;width:100%;height:100%}
         <div class="overlay" id="ov" hidden><div class="card" id="card"></div></div>
       </div>
       <div class="dock">
-        <div class="dock-row"><ol class="order" id="order"></ol></div>
+        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
         <div class="dock-row">
           <div class="wx"><span>五行</span><div class="wx-bar" id="wxBar"></div><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
           <span class="rate" id="rate" title="唔炸爐又煉得成丹嘅機會">成功率<b>—</b></span>
@@ -269,6 +278,8 @@ canvas{display:block;width:100%;height:100%}
 <div class="modal" id="modal" hidden>
   <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <div class="mtabs">
+      <button class="btn" type="button" id="mtBook" aria-selected="false">丹書</button>
+      <button class="btn" type="button" id="mtShop" aria-selected="false">商行</button>
       <button class="btn" type="button" id="mtAch" aria-selected="true">成就</button>
       <button class="btn" type="button" id="mtCodex" aria-selected="false">丹譜</button>
       <button class="btn" type="button" id="mtCar" aria-selected="false">丹途門派</button>
@@ -369,17 +380,17 @@ const ALL_PILLS=[...Object.values(NAMES).flatMap(o=>ELK.map(k=>o[k])),...SPECIAL
 const TYPE_DATA={path:PATHS,art:ARTS,fire:FIRES,furn:FURN,ing:ING};
 
 /* ---------- 解鎖與成就 ---------- */
-const START=['path:zheng','art:taishang','fire:fan','furn:wa','furn:qingtong','ing:renshen','ing:lingzhi','ing:chiyan','ing:zhusha','ing:xuantu','ing:dilong','ing:hanbing','ing:jitang'];
+const START=['path:zheng','fire:fan','furn:wa','furn:qingtong','ing:renshen','ing:lingzhi','ing:chiyan','ing:zhusha','ing:xuantu','ing:dilong','ing:hanbing','ing:jitang'];
 const ACHS=[
   {id:'first',n:'初開丹爐',d:'煉第一爐丹',c:s=>s.st.brews>=1,u:['fire:difei','ing:xingchen','ing:duanchang']},
   {id:'boom',n:'眉毛何在',d:'第一次炸爐',c:s=>s.st.booms>=1,u:['fire:fenghuang']},
   {id:'eat',n:'以身試丹',d:'第一次食自己煉嘅丹',c:s=>s.st.eats>=1,u:['path:fo','ing:mantuo']},
-  {id:'ling',n:'靈氣初現',d:'煉出靈品丹',c:s=>s.st.maxG>=2,u:['art:jiuzhuan','furn:hulu','ing:heshouwu','ing:tianyi']},
+  {id:'ling',n:'靈氣初現',d:'煉出靈品丹',c:s=>s.st.maxG>=2,u:['furn:hulu','ing:heshouwu','ing:tianyi']},
   {id:'five',n:'熟能生巧',d:'累計煉五爐',c:s=>s.st.brews>=5,u:['path:yi','ing:longxian']},
   {id:'shidi',n:'師弟，對唔住',d:'試藥害死第一位師弟',c:s=>s.shidi>=1,u:['path:du']},
-  {id:'ten',n:'丹心入魔',d:'累計煉十爐',c:s=>s.st.brews>=10,u:['path:mo','art:tianmo','ing:xueputi','fire:jiuyou']},
-  {id:'zhuji',n:'築基有成',d:'突破到築基期',c:s=>s.st.maxRealm>=1,u:['fire:sanmei','furn:bagua','art:wuwei','ing:yaodan']},
-  {id:'di',n:'地脈之丹',d:'煉出地品丹',c:s=>s.st.maxG>=3,u:['art:shenshi','ing:qilin','ing:gengjin']},
+  {id:'ten',n:'丹心入魔',d:'累計煉十爐',c:s=>s.st.brews>=10,u:['path:mo','ing:xueputi','fire:jiuyou']},
+  {id:'zhuji',n:'築基有成',d:'突破到築基期',c:s=>s.st.maxRealm>=1,u:['fire:sanmei','furn:bagua','ing:yaodan']},
+  {id:'di',n:'地脈之丹',d:'煉出地品丹',c:s=>s.st.maxG>=3,u:['ing:qilin','ing:gengjin']},
   {id:'jindan',n:'金丹大道',d:'突破到金丹期',c:s=>s.st.maxRealm>=2,u:['fire:zixiao','furn:jiulong','ing:xirang']},
   {id:'codex10',n:'丹譜十頁',d:'收錄十款丹',c:s=>s.codex.length>=10,u:['ing:mengpo']},
   {id:'chicken',n:'阿媽嘅味道',d:'煉出雞湯丹',c:s=>s.codex.includes('雞湯丹'),u:[]},
@@ -397,6 +408,10 @@ const ACHS=[
   {id:'own',n:'開宗立派',d:'創立自己嘅門派',c:s=>s.st.ownSect>=1,u:[]},
   {id:'holy',n:'一方聖地',d:'門派升到聖地',c:s=>!!(s.player.car&&s.player.car.aff==='own'&&s.player.car.lvl>=4),u:[]},
   {id:'many',n:'桃李滿門',d:'同時有 8 個徒弟',c:s=>!!(s.player.car&&s.player.car.members.length>=8),u:[]},
+  {id:'books5',n:'藏書五卷',d:'收藏五本丹書',c:s=>(s.books||[]).length>=5,u:[]},
+  {id:'selfmade',n:'自成一家',d:'閉關自創成功',c:s=>(s.st.selfmade||0)>=1,u:[]},
+  {id:'master',n:'爐火純青',d:'同一種丹煉成十次',c:s=>Object.values(s.mastery||{}).some(v=>v>=10),u:[]},
+  {id:'recipes10',n:'丹方十道',d:'丹書記載十條丹方',c:s=>Object.keys(s.recipes||{}).length>=10,u:[]},
   {id:'fly',n:'白日飛升',d:'飛升仙界',c:s=>s.st.flew>=1,u:[]}
 ];
 function labelOf(key){const [t,id]=key.split(':');return TYPE_DATA[t][id].n;}
@@ -409,6 +424,191 @@ let save=newSave();
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.player){save=Object.assign(newSave(),s);save.st=Object.assign(newSave().st,s.st||{});}}}catch(e){}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
 const P=()=>save.player;
+
+/* ---------- 藏書與丹書 ---------- */
+const BOOK_T={jing:'煉丹經',zhou:'煉丹咒',jue:'煉丹訣',xf:'煉丹心法',ji:'煉丹集'};
+const SRC_N={start:'家傳',shop:'商行',yao:'斬妖',xie:'丹會',sect:'門派',self:'自創'};
+const BOOKS={
+  xf_taishang:{n:'太上清靜經',t:'xf',art:'taishang',src:['start'],d:'傳授心法「太上清靜經」。'},
+  ji_jiachuan:{n:'家傳丹方',t:'ji',src:['start'],d:'阿爺留低嘅一本手抄丹方。',rec:[{path:'zheng',art:'taishang',fire:'fan',furn:'qingtong',order:['xuantu','lingzhi','renshen']}]},
+  xf_jiuzhuan:{n:'九轉玄功',t:'xf',art:'jiuzhuan',src:['shop'],p:600,d:'傳授心法「九轉玄功」。'},
+  xf_wuwei:{n:'無為心法',t:'xf',art:'wuwei',src:['sect','self'],d:'傳授心法「無為心法」。'},
+  xf_shenshi:{n:'丹鼎神識',t:'xf',art:'shenshi',src:['self','shop'],p:1500,d:'傳授心法「丹鼎神識」。'},
+  xf_tianmo:{n:'天魔噬心訣殘本',t:'xf',art:'tianmo',src:['yao'],d:'從魔修屍身搜出。傳授心法「天魔噬心訣」。'},
+  jing_huangdi:{n:'黃帝九鼎神丹經',t:'jing',src:['shop'],p:900,fx:{q:6},d:'丹品 +6。'},
+  jing_cantong:{n:'周易參同契',t:'jing',src:['self','shop'],p:1200,fx:{q:4,stab:4},d:'丹品 +4，丹爐穩定 +4。'},
+  jing_baopu:{n:'抱朴子內篇',t:'jing',src:['shop'],p:700,fx:{life:60},d:'參透養生之道，壽元 +60。'},
+  zhou_zhenlu:{n:'鎮爐咒',t:'zhou',src:['shop','yao'],p:500,fx:{stab:8},d:'丹爐穩定 +8。'},
+  zhou_juling:{n:'聚靈咒',t:'zhou',src:['yao','self'],fx:{q:5},d:'丹品 +5。'},
+  zhou_bihuo:{n:'避火咒',t:'zhou',src:['shop'],p:300,fx:{safe:1},d:'炸爐時唔會受傷。'},
+  jue_konghuo:{n:'控火訣',t:'jue',src:['xie','shop'],p:450,fx:{heat:.7},d:'火候偏差嘅影響減三成。'},
+  jue_kanhuo:{n:'觀火訣',t:'jue',src:['self','shop'],p:800,fx:{hint:1},d:'睇得出每爐嘅理想火候。'},
+  jue_ningdan:{n:'凝丹訣',t:'jue',src:['sect'],fx:{q:3,stab:3},d:'丹品 +3，丹爐穩定 +3。'},
+  ji_rumen:{n:'丹會入門集',t:'ji',src:['xie'],d:'丹會發畀新會員嘅丹方。',rec:[
+    {path:'zheng',art:'taishang',fire:'difei',furn:'qingtong',order:['hanbing','lingzhi','chiyan','xuantu']},
+    {path:'zheng',art:'taishang',fire:'difei',furn:'qingtong',order:['xingchen','hanbing','lingzhi','chiyan']}]},
+  ji_baicao:{n:'百草丹集',t:'ji',src:['shop'],p:400,d:'醫道入門丹方。',rec:[
+    {path:'yi',art:'taishang',fire:'difei',furn:'qingtong',order:['heshouwu','lingzhi','renshen']},
+    {path:'yi',art:'taishang',fire:'difei',furn:'qingtong',order:['tianyi','heshouwu','lingzhi','renshen']}]},
+  ji_qianjin:{n:'千金要方',t:'ji',src:['shop'],p:700,d:'醫道同佛門嘅丹方。',rec:[
+    {path:'yi',art:'taishang',fire:'difei',furn:'qingtong',order:['heshouwu','renshen','chiyan']},
+    {path:'fo',art:'taishang',fire:'difei',furn:'qingtong',order:['xingchen','xuantu','dilong']}]},
+  ji_yaoshou:{n:'妖獸丹集',t:'ji',src:['yao'],d:'妖修煉毒丹嘅筆記。',rec:[
+    {path:'du',art:'taishang',fire:'difei',furn:'qingtong',order:['duanchang','mantuo','zhusha']},
+    {path:'du',art:'taishang',fire:'difei',furn:'qingtong',order:['yaodan','dilong','zhusha']}]},
+  ji_wanmo:{n:'萬魔血典',t:'ji',src:['yao'],d:'魔道丹方，翻開有陣血腥味。',rec:[
+    {path:'mo',art:'taishang',fire:'difei',furn:'qingtong',order:['xueputi','xuantu','xingchen','longxian']},
+    {path:'mo',art:'taishang',fire:'difei',furn:'qingtong',order:['qilin','xuantu','gengjin']}]},
+  ji_bingyuo:{n:'冰火奇方',t:'ji',src:['shop'],p:2500,d:'傳說中冰火同爐之法。',rec:[
+    {path:'zheng',art:'wuwei',fire:'sanmei',furn:'bagua',order:['qilin','hanbing','lingzhi','chiyan']}]}
+};
+const START_BOOKS=['xf_taishang','ji_jiachuan'];
+function books(){if(!save.books)save.books=START_BOOKS.slice();return save.books;}
+function hasBook(id){return books().includes(id);}
+function bookFx(){const f={q:0,stab:0,heat:1,hint:0,safe:0};books().forEach(id=>{const x=BOOKS[id].fx;if(!x)return;f.q+=x.q||0;f.stab+=x.stab||0;if(x.heat)f.heat*=x.heat;if(x.hint)f.hint=1;if(x.safe)f.safe=1;});return f;}
+function artOwned(id){return save.cheat||books().some(b=>BOOKS[b].art===id);}
+function gainBook(id,how){
+  if(hasBook(id))return false;
+  books().push(id);const B=BOOKS[id];
+  if(B.fx&&B.fx.life)P().lifeBonus+=B.fx.life;
+  (B.rec||[]).forEach(r=>learnRecipe(r,B.n));
+  return true;
+}
+/* 丹書：以丹名做 key */
+function recipes(){if(!save.recipes)save.recipes={};return save.recipes;}
+function mastery(){if(!save.mastery)save.mastery={};return save.mastery;}
+function sigOf(r){return[r.path,r.art,r.fire,r.furn,r.heat||'',r.order.join(',')].join('|');}
+function learnRecipe(r,src){
+  const pv=previewRecipe(r);if(!pv)return;
+  const R=recipes();
+  if(R[pv.name]&&R[pv.name].g>=pv.g)return;
+  R[pv.name]={cfg:{path:r.path,art:r.art,fire:r.fire,furn:r.furn,heat:pv.heat,order:r.order.slice()},src,g:pv.g};
+}
+function gradeFromQ(Q,fire,furn){let g=Q<15?0:Q<40?1:Q<65?2:Q<90?3:Q<120?4:5;if(FIRES[fire].cap!==undefined)g=Math.min(g,FIRES[fire].cap);if(furn==='wa')g=Math.min(g,3);return g;}
+function nameFor(a,g,path){
+  let kind='normal',name;
+  if(a.flags.chicken){kind='chicken';name='雞湯丹';g=1;}
+  else if(g===0){kind='waste';name='廢丹';}
+  else if(a.dev<=-3){kind='raw';name='生丹';g=Math.min(g,1);}
+  else if(a.dev>=3){kind='burnt';name='焦炭丹';g=Math.min(g,1);}
+  else if(a.flags.icefireOk){name='冰火九重天丹';g=Math.max(g,3);}
+  else if(a.flags.sancai&&path!=='du'&&path!=='mo')name='三才造化丹';
+  else if(a.flags.longxue)name='龍血丹';
+  else if(a.flags.soul&&path==='du')name='斷魂丹';
+  else if(a.flags.meng){kind='meng';name='忘情丹';}
+  else name=NAMES[path][a.dom];
+  return{kind,name,g};
+}
+const FAIL_KINDS=['waste','raw','burnt'];
+function previewRecipe(r){
+  const keep=JSON.stringify(cfg);
+  try{
+    Object.assign(cfg,{path:r.path,art:r.art,fire:r.fire,furn:r.furn,order:r.order.slice()});
+    cfg.heat=r.heat||5;let a=analyse();
+    if(!r.heat){cfg.heat=a.ideal;a=analyse();}
+    const nm=nameFor(a,gradeFromQ(a.Q,cfg.fire,cfg.furn),cfg.path);
+    return{name:nm.name,g:nm.g,kind:nm.kind,heat:cfg.heat,rate:successRate(a)};
+  }finally{Object.assign(cfg,JSON.parse(keep));}
+}
+function missingFor(c){
+  const m=[];
+  if(!isUnl('path',c.path))m.push(PATHS[c.path].n);
+  if(!isUnl('art',c.art))m.push('心法'+ARTS[c.art].n);
+  if(!isUnl('fire',c.fire))m.push(FIRES[c.fire].n);
+  if(!isUnl('furn',c.furn))m.push(FURN[c.furn].n);
+  [...new Set(c.order)].forEach(id=>{if(!isUnl('ing',id))m.push(ING[id].n);});
+  return m;
+}
+function applyRecipe(name){
+  const e=recipes()[name];if(!e||busy)return;
+  const miss=missingFor(e.cfg);if(miss.length){bookMsg('配唔到：未有'+miss.join('、'));return;}
+  Object.assign(cfg,JSON.parse(JSON.stringify(e.cfg)));
+  $('modal').hidden=true;renderAll();toast('已經按丹書配好「'+name+'」');
+}
+function masteryN(c){return c>=10?'爐火純青':c>=6?'精通':c>=3?'熟手':c>=1?'初識':'生疏';}
+function masteryBonus(c){return{q:Math.min(c*1.5,15),s:Math.min(c*3,24)};}
+/* 煉成後自動記錄 */
+function recordBrew(p){
+  if(FAIL_KINDS.includes(p.kind))return[];
+  const msgs=[];const M=mastery();M[p.name]=(M[p.name]||0)+1;
+  const R=recipes();const snap={path:cfg.path,art:cfg.art,fire:cfg.fire,furn:cfg.furn,heat:cfg.heat,order:cfg.order.slice()};
+  if(!R[p.name]){R[p.name]={cfg:snap,src:'自創',g:p.grade};msgs.push('「'+p.name+'」嘅配方已記入丹書');}
+  else if(p.grade>R[p.name].g){R[p.name]={cfg:snap,src:'自創',g:p.grade};msgs.push('丹書更新咗「'+p.name+'」更好嘅配方');}
+  const c=M[p.name];if([1,3,6,10].includes(c))msgs.push('「'+p.name+'」熟練度：'+masteryN(c));
+  return msgs;
+}
+/* 商行 */
+function shopStock(){
+  const pl=P();if(!save.shop||save.shop.age!==pl.age||save.shop.life!==save.lives){
+    const pool=Object.keys(BOOKS).filter(id=>BOOKS[id].src.includes('shop')&&!hasBook(id));
+    const st=[];while(st.length<3&&pool.length){st.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]);}
+    save.shop={age:pl.age,life:save.lives,stock:st};
+  }
+  save.shop.stock=save.shop.stock.filter(id=>!hasBook(id));
+  return save.shop.stock;
+}
+function buyBook(id){
+  const B=BOOKS[id];if(!B||hasBook(id))return;
+  if(P().stones<B.p){bookMsg('靈石唔夠，要 '+B.p);return;}
+  P().stones-=B.p;gainBook(id);bookMsg('買咗《'+B.n+'》。'+B.d);afterAction();
+}
+/* 斬妖跌書 */
+function yaoDrop(){
+  if(rnd()>.25)return null;
+  const pool=Object.keys(BOOKS).filter(id=>BOOKS[id].src.includes('yao')&&!hasBook(id));
+  if(!pool.length)return null;
+  const id=pool[Math.floor(rnd()*pool.length)];gainBook(id);return id;
+}
+function giftBooks(src){
+  const got=Object.keys(BOOKS).filter(id=>BOOKS[id].src.includes(src)&&gainBook(id));
+  return got.map(id=>'《'+BOOKS[id].n+'》');
+}
+/* 閉關自創 */
+function selfCreate(){
+  const c=C();const pl=P();
+  if(c.skill<3){bookMsg('丹術要三階或以上先有能力自創');return;}
+  const pool=Object.keys(BOOKS).filter(id=>BOOKS[id].src.includes('self')&&!hasBook(id));
+  if(!pool.length){bookMsg('你已經參透晒可以自創嘅功法');return;}
+  if(pl.stones<200){bookMsg('閉關要準備 200 靈石嘅丹藥同材料');return;}
+  pl.stones-=200;pl.age+=3;
+  const chance=clamp(.25+c.skill*.07,.25,.95);
+  if(rnd()<chance){const id=pool[Math.floor(rnd()*pool.length)];gainBook(id);save.st.selfmade=(save.st.selfmade||0)+1;bookMsg('閉關三年，你自創出《'+BOOKS[id].n+'》！'+BOOKS[id].d);}
+  else{c.sxp+=20;bookMsg('閉關三年，諗到頭都爆，乜都創唔到。丹術經驗 +20。（成功機會約 '+Math.round(chance*100)+'%）');}
+  afterAction();
+}
+function ensureStart(){if(!save.recipes){save.recipes={};books().forEach(id=>(BOOKS[id].rec||[]).forEach(r=>learnRecipe(r,BOOKS[id].n)));persist();}}
+function bookMsg(t){$('mMsg').textContent=t;}
+function renderBooks(){
+  const R=recipes(),M=mastery();const fx=bookFx();
+  let h='<div class="label">丹方（'+Object.keys(R).length+'）<em>撳「配好」即刻將丹道、心法、火、火候、爐同藥材順序一次過設定</em></div><div class="recs">';
+  Object.entries(R).sort((x,y)=>(M[y[0]]||0)-(M[x[0]]||0)).forEach(([name,e])=>{
+    const c=e.cfg;const miss=missingFor(c);const cnt=M[name]||0;
+    let pv=null;if(!miss.length)pv=previewRecipe(c);
+    h+='<div class="rec"><div class="mem-h"><b>'+name+'</b><span class="tag">'+(pv?'預計'+GRADES[pv.g]:'最佳'+GRADES[e.g])+'</span><span class="tag '+(cnt?'good':'')+'">'+masteryN(cnt)+(cnt?' ×'+cnt:'')+'</span><span class="desc">'+e.src+'</span></div>'+
+      '<div class="desc">'+PATHS[c.path].n+' · '+ARTS[c.art].n+' · '+FIRES[c.fire].n+' · 火候'+CN[c.heat]+' · '+FURN[c.furn].n+'</div>'+
+      '<div class="desc">'+c.order.map((id,i)=>{const n=c.order.length;return(i===0?'君':i===1?'臣':(i===n-1&&n>2)?'使':'佐')+' '+ING[id].n;}).join('　')+'</div>'+
+      '<div class="car-act">'+(miss.length?'<span class="desc bad">未有：'+miss.join('、')+'</span>':'<span class="desc">預計成功率 '+pv.rate+'%</span><button class="btn" type="button" data-a="apply" data-n="'+name+'">一撳配好</button>')+'</div></div>';
+  });
+  h+='</div><div class="label" style="margin-top:8px">藏書（'+books().length+' / '+Object.keys(BOOKS).length+'）<em>'+(fx.q||fx.stab?'加成合共：丹品 +'+fx.q+'，穩定 +'+fx.stab:'')+'</em></div><div class="mems">';
+  books().forEach(id=>{const B=BOOKS[id];h+='<div class="mem"><div class="mem-h"><b>《'+B.n+'》</b><span class="tag">'+BOOK_T[B.t]+'</span></div><div class="desc">'+B.d+(B.rec?' 載有 '+B.rec.length+' 條丹方。':'')+'</div></div>';});
+  h+='</div><div class="label" style="margin-top:8px">閉關自創</div><div class="car-act"><button class="btn" type="button" data-a="self" '+(C().skill<3?'disabled':'')+'>閉關自創（三年、200 靈石）</button><span class="desc">'+(C().skill<3?'要丹術三階':'成功機會約 '+Math.round(clamp(.25+C().skill*.07,.25,.95)*100)+'%，自創出心法、經、咒或訣')+'</span></div>'+
+     '<div class="desc" style="margin-top:6px">取得藏書嘅途徑：商行購買、下山斬妖有機會跌落、加入丹會或門派獲贈、閉關自創。煉成功嘅丹藥會自動記入丹書；同一種丹煉得越多越熟手，成功率同丹品都會提升。</div>';
+  $('mBody').innerHTML=h;
+}
+function renderShop(){
+  const st=shopStock();
+  let h='<div class="desc">商行每年換一次貨。藏書嘅效果買咗即刻生效，轉世都會保留。</div><div class="mems" style="margin-top:6px">';
+  if(!st.length)h+='<div class="desc">今年冇新貨，過一年再嚟睇。</div>';
+  st.forEach(id=>{const B=BOOKS[id];h+='<div class="mem"><div class="mem-h"><b>《'+B.n+'》</b><span class="tag">'+BOOK_T[B.t]+'</span></div><div class="desc">'+B.d+(B.rec?' 載有 '+B.rec.length+' 條丹方。':'')+'</div><button class="btn" type="button" data-a="buy" data-id="'+id+'" '+(P().stones<B.p?'disabled':'')+'>買（'+B.p+' 靈石）</button></div>';});
+  h+='</div>';
+  $('mBody').innerHTML=h;
+}
+function onBookClick(e){
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
+  const a=b.dataset.a;
+  if(a==='apply')applyRecipe(b.dataset.n);else if(a==='self')selfCreate();else if(a==='buy')buyBook(b.dataset.id);
+}
+
 function bag(){const pl=P();if(!pl.bag)pl.bag={};return pl.bag;}
 function bagSplit(){const b=Object.assign({},bag());let paid=0;const used={};cfg.order.forEach(id=>{if(b[id]>0){b[id]--;used[id]=(used[id]||0)+1;}else paid+=ING[id].p;});return{paid,used};}
 
@@ -524,11 +724,11 @@ function takeExam(){
   else carMsg('考試時手震，炸咗考場個爐。考官搖頭，下次再嚟。（合格機會約 '+Math.round(chance*100)+'%）');
   afterAction();
 }
-function joinXie(){const c=C();if(c.cert<1){carMsg('要有一品丹證先可以加入煉丹協會');return;}c.aff='xie';refreshCands(true);carMsg('你加入咗煉丹協會：藥材九折，賣丹多一成，可招募 2 個師弟妹。');afterAction();}
+function joinXie(){const c=C();if(c.cert<1){carMsg('要有一品丹證先可以加入煉丹協會');return;}c.aff='xie';refreshCands(true);const gb=giftBooks('xie');carMsg('你加入咗煉丹協會：藥材九折，賣丹多一成，可招募 2 個師弟妹。'+(gb.length?'丹會送你'+gb.join('、')+'。':''));afterAction();}
 function joinSect(id){
   const c=C();if(c.cert<3||P().realm<1){carMsg('要三品丹證同築基期先有門派肯收你');return;}
   c.aff='sect';c.sect=id;save.st.joined=1;c.members=c.members.slice(0,4);refreshCands(true);
-  carMsg('你拜入'+SECTS[id].n+'，成為丹房弟子。'+SECTS[id].d+'每爐有 30 靈石月俸。');afterAction();
+  const gb=giftBooks('sect');carMsg('你拜入'+SECTS[id].n+'，成為丹房弟子。'+SECTS[id].d+'每爐有 30 靈石月俸。'+(gb.length?'師父傳你'+gb.join('、')+'。':''));afterAction();
 }
 function createSect(name){
   const c=C();name=(name||'').trim().slice(0,8)||'九轉宗';
@@ -613,7 +813,7 @@ function onCareerClick(e){
 
 function unlockedSet(){const set=new Set(START);ACHS.forEach(a=>{if(save.ach.includes(a.id))a.u.forEach(k=>set.add(k));});return set;}
 let UNL=unlockedSet();
-const isUnl=(t,id)=>save.cheat||UNL.has(t+':'+id);
+const isUnl=(t,id)=>save.cheat||(t==='art'?artOwned(id):UNL.has(t+':'+id));
 function checkAch(){
   const got=[];
   ACHS.forEach(a=>{if(!save.ach.includes(a.id)&&a.c(save)){save.ach.push(a.id);got.push(a);}});
@@ -655,9 +855,9 @@ function renderRecipe(){
   $('heat').value=cfg.heat;$('heat').disabled=busy;
   $('heatVal').textContent=CN[cfg.heat]+(cfg.heat<=3?'文':cfg.heat>=7?'武':'中');
   const a=analyse();
-  $('heatHint').textContent=cfg.art==='shenshi'&&cfg.order.length?('神識感應：此爐火候宜「'+CN[a.ideal]+'」左右。'):'';
+  $('heatHint').textContent=(cfg.art==='shenshi'||bookFx().hint)&&cfg.order.length?((cfg.art==='shenshi'?'神識感應':'觀火訣')+'：此爐火候宜「'+CN[a.ideal]+'」左右。'):'';
   $('furnName').textContent=FURN[cfg.furn].n;
-  {const h=team().helpers;$('fireName').textContent=FIRES[cfg.fire].n+' · 火候'+CN[cfg.heat]+(h.length?' · 助爐：'+h.join('、'):'');}
+  {const h=team().helpers;$('fireName').textContent=FIRES[cfg.fire].n+' · 火候'+CN[cfg.heat]+(h.length?' · 助爐：'+h.join('、'):'')+(a.mName&&(a.mCount||recipes()[a.mName])?' · '+a.mName+'：'+masteryN(a.mCount):'');}
 }
 
 /* ---------- 渲染：藥櫃與順序 ---------- */
@@ -760,16 +960,19 @@ function analyse(){
   if(cfg.art==='tianmo')demon+=12;if(cfg.art==='taishang')demon-=6;
   const avg=n?items.reduce((s,i)=>s+i.pot,0)/n:0;
   const ideal=clamp(Math.round(2+avg*.55)+Pa.shift,1,9);
-  const dev=cfg.heat-ideal;const half=cfg.art==='shenshi'?.5:1;
+  const bfx=bookFx();const dev=cfg.heat-ideal;const half=(cfg.art==='shenshi'?.5:1)*bfx.heat;
   let heatQ=0;
   if(dev>0){stab-=dev*9*half;heatQ-=dev*4*half;}
   if(dev<0)heatQ-=Math.abs(dev)*8*half;
   const tm=team();
-  const Q=pot*2.2+syn+fit+A.pow+F.q+K.q+heatQ+tm.q;
-  const S=55+tm.stab+K.stab+A.stab+F.stab+stab-Math.abs(yy)*2.5-(cfg.path==='du'?0:tox*1.2);
-  const boom=n?clamp((45-S)*2,0,95):0;
+  let Q=pot*2.2+syn+fit+A.pow+F.q+K.q+heatQ+tm.q+bfx.q;
+  let S=55+tm.stab+bfx.stab+K.stab+A.stab+F.stab+stab-Math.abs(yy)*2.5-(cfg.path==='du'?0:tox*1.2);
   const dom=ELK.reduce((a,k)=>el[k]>el[a]?k:a,'m');
-  return{el,yy,tox,Q,S,boom,ideal,dev,dom,notes,flags,demon,n};
+  let mName=null,mCount=0;
+  if(n){const nm=nameFor({flags,dev,dom},gradeFromQ(Q,cfg.fire,cfg.furn),cfg.path);if(!FAIL_KINDS.includes(nm.kind)){mName=nm.name;mCount=mastery()[mName]||0;}}
+  if(mCount){const mb=masteryBonus(mCount);Q+=mb.q;S+=mb.s;notes.push(['good','對「'+mName+'」'+masteryN(mCount)+'，得心應手']);}
+  const boom=n?clamp((45-S)*2,0,95):0;
+  return{el,yy,tox,Q,S,boom,ideal,dev,dom,notes,flags,demon,n,mName,mCount};
 }
 
 /* ---------- 爐火動畫 ---------- */
@@ -868,8 +1071,9 @@ function finish(a,exploded){
     log('爆','轟！丹爐炸咗！','boom');
     if(cfg.fire==='fenghuang'&&rnd()<.3){log('涅槃','鳳凰火捲住殘渣，重新凝成一粒丹','good');current=makePill(a,true);}
     else{
-      const hurt=Math.round(5+rnd()*10);P().cult=Math.max(0,P().cult-hurt);P().tox=clamp(P().tox+5,0,200);
-      log('後果','眉毛燒剩一半，修為 −'+hurt+'%，吸咗啲毒煙','bad');
+      if(bookFx().safe)log('避火咒','金光一閃，你毫髮無損','good');
+      else{const hurt=Math.round(5+rnd()*10);P().cult=Math.max(0,P().cult-hurt);P().tox=clamp(P().tox+5,0,200);
+      log('後果','眉毛燒剩一半，修為 −'+hurt+'%，吸咗啲毒煙','bad');}
       careerAfterBrew(0,true).forEach(m=>log('丹途',m,'good'));
       busy=false;afterAction();return;
     }
@@ -877,26 +1081,15 @@ function finish(a,exploded){
   log('開爐','得到：'+current.name+'（'+current.gradeName+'）','good');
   save.st.maxG=Math.max(save.st.maxG,current.grade);
   if(!save.codex.includes(current.name)){save.codex.push(current.name);toast('丹譜新增：'+current.name);}
+  recordBrew(current).forEach(m=>log('丹書',m,'good'));
   careerAfterBrew(current.grade,exploded).forEach(m=>log('丹途',m,'good'));
   busy=false;afterAction();if(P().alive&&current)showPill();
 }
 function makePill(a,phoenix){
   const Q=a.Q*(.88+rnd()*.24);
-  let g=Q<15?0:Q<40?1:Q<65?2:Q<90?3:Q<120?4:5;
-  if(FIRES[cfg.fire].cap!==undefined)g=Math.min(g,FIRES[cfg.fire].cap);
-  if(cfg.furn==='wa')g=Math.min(g,3);
+  let g=gradeFromQ(Q,cfg.fire,cfg.furn);
   if(phoenix)g=Math.max(1,g-1);
-  let kind='normal',name;
-  if(a.flags.chicken){kind='chicken';name='雞湯丹';g=1;}
-  else if(g===0){kind='waste';name='廢丹';}
-  else if(a.dev<=-3){kind='raw';name='生丹';g=Math.min(g,1);}
-  else if(a.dev>=3){kind='burnt';name='焦炭丹';g=Math.min(g,1);}
-  else if(a.flags.icefireOk){name='冰火九重天丹';g=Math.max(g,3);}
-  else if(a.flags.sancai&&cfg.path!=='du'&&cfg.path!=='mo')name='三才造化丹';
-  else if(a.flags.longxue)name='龍血丹';
-  else if(a.flags.soul&&cfg.path==='du')name='斷魂丹';
-  else if(a.flags.meng){kind='meng';name='忘情丹';}
-  else name=NAMES[cfg.path][a.dom];
+  const nm=nameFor(a,g,cfg.path);const kind=nm.kind,name=nm.name;g=nm.g;
   return{name,kind,grade:g,gradeName:GRADES[g],Q,path:cfg.path,dom:a.dom,tox:a.tox+(kind==='burnt'?6:0)+(kind==='waste'?8:0),yy:a.yy,demon:a.demon,art:cfg.art,desc:pillDesc(kind,g),elHex:EL[a.dom].hex};
 }
 function pillDesc(kind,g){
@@ -1046,13 +1239,16 @@ function renderAll(){
   renderRecipe();renderShelf();renderStats();
   $('go').disabled=busy||!P().alive||!cfg.order.length;
   $('go').textContent=busy?'煉製中':'開爐';
-  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;
+  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;$('dockBook').disabled=busy;
   if(!$('modal').hidden)renderModal();
 }
 
 /* ---------- 成就／丹譜彈窗 ---------- */
 let mTab='ach';
 function renderModal(){
+  $('mtBook').setAttribute('aria-selected',mTab==='book');$('mtShop').setAttribute('aria-selected',mTab==='shop');
+  if(mTab==='book'){$('mTitle').innerHTML='丹書<span>'+Object.keys(recipes()).length+' 條丹方　'+books().length+' 本藏書</span>';renderBooks();return;}
+  if(mTab==='shop'){$('mTitle').innerHTML='商行<span>你有 '+P().stones+' 靈石</span>';renderShop();return;}
   $('mtAch').setAttribute('aria-selected',mTab==='ach');$('mtCodex').setAttribute('aria-selected',mTab==='codex');$('mtCar').setAttribute('aria-selected',mTab==='car');
   if(mTab==='car'){$('mTitle').innerHTML='丹途門派<span>'+titleOf()+'</span>';renderCareer();return;}
   if(mTab==='ach'){
@@ -1071,10 +1267,13 @@ $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
 $('mtCar').onclick=()=>{mTab='car';$('mMsg').textContent='';renderModal();};
 $('openCar').onclick=()=>{mTab='car';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
-$('mBody').addEventListener('click',e=>{if(mTab==='car')onCareerClick(e);});
+$('mBody').addEventListener('click',e=>{if(mTab==='car')onCareerClick(e);else if(mTab==='book'||mTab==='shop')onBookClick(e);});
+function openTab(t){mTab=t;$('modal').hidden=false;$('mMsg').textContent='';renderModal();}
+$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('openShop').onclick=()=>openTab('shop');
+$('mtBook').onclick=()=>openTab('book');$('mtShop').onclick=()=>openTab('shop');
 function cheat(){
   const v=$('cheatIn').value.trim();$('cheatIn').value='';
-  if(v==='急急如律令'){save.cheat=true;persist();renderAll();$('mMsg').textContent='天門大開：所有丹道、心法、火種、丹爐同藥材已經全部解鎖。';}
+  if(v==='急急如律令'){save.cheat=true;Object.keys(BOOKS).forEach(id=>gainBook(id));persist();renderAll();$('mMsg').textContent='天門大開：所有丹道、心法、火種、丹爐、藥材同藏書已經全部解鎖。';}
   else if(v==='丹道通神'){const c=C();c.skill=10;c.sxp=0;c.cert=9;save.st.maxCert=9;const pl=P();if(pl.realm<2){pl.realm=2;pl.cult=0;save.st.maxRealm=Math.max(save.st.maxRealm,2);}afterAction();$('mMsg').textContent='你忽然開竅：丹術宗師、九品丹證、金丹期。';}
   else if(v==='點石成金'){P().stones+=10000;persist();renderAll();$('mMsg').textContent='袋入面多咗 10000 靈石。';}
   else $('mMsg').textContent='咒語無效，乜都冇發生。';
@@ -1084,7 +1283,7 @@ $('cheatIn').onkeydown=e=>{if(e.key==='Enter')cheat();};
 let resetArm=false;
 $('reset').onclick=()=>{
   if(!resetArm){resetArm=true;$('mMsg').textContent='再撳多次「全部重來」就會清除所有進度、成就同丹譜。';setTimeout(()=>{resetArm=false;},4000);return;}
-  save=newSave();UNL=unlockedSet();resetArm=false;Object.assign(cfg,JSON.parse(JSON.stringify(DEFAULT_CFG)));
+  save=newSave();UNL=unlockedSet();resetArm=false;ensureStart();Object.assign(cfg,JSON.parse(JSON.stringify(DEFAULT_CFG)));
   current=null;closeOverlay();$('log').innerHTML='';persist();renderAll();$('mMsg').textContent='天地重開。';
 };
 
@@ -1116,7 +1315,7 @@ function gatherHerbs(){
   afterAction();
 }
 $('herb').onclick=gatherHerbs;
-$('task').onclick=()=>{if(busy||!P().alive)return;P().stones+=120;P().age+=1;afterAction();toast('斬咗隻狼妖，賺到 120 靈石，用咗一年');};
+$('task').onclick=()=>{if(busy||!P().alive)return;P().stones+=120;P().age+=1;const d=yaoDrop();afterAction();toast('斬咗隻狼妖，賺到 120 靈石，用咗一年'+(d?'。仲喺妖洞搵到《'+BOOKS[d].n+'》！':''),d?4500:2600);};
 $('heat').oninput=e=>{cfg.heat=+e.target.value;renderAll();};
 $('go').onclick=brew;
 function setTab(t){
@@ -1128,7 +1327,7 @@ $('tFa').onclick=()=>setTab('fa');$('tHuo').onclick=()=>setTab('huo');$('tShelf'
 setTab('shelf');
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,ms||2600);}
 
-fixCfg();resize();renderAll();
+ensureStart();fixCfg();resize();renderAll();
 if(!P().alive&&save.dead)showDeath();else if(!P().alive)P().alive=true;
 requestAnimationFrame(loop);
 })();
