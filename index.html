@@ -237,6 +237,9 @@ canvas{display:block;width:100%;height:100%}
 .dz:hover{border-color:var(--bronze);border-left-color:var(--apt)}
 .dz.empty{border-style:dashed;border-left-width:1px;color:var(--muted)}
 .dz-av{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:19px;background:var(--panel2);border:2px solid var(--apt,var(--line));color:#fff0d4;line-height:1}
+.dz-stack{display:flex;flex:none}
+.dz-stack .dz-av.sm{width:24px;height:24px;font-size:14px;margin-right:-8px;border-width:2px}
+.dz-stack .dz-av.sm:last-child{margin-right:0}
 .dz-av.big{width:52px;height:52px;font-size:32px}
 .dz.empty .dz-av{border-style:dashed;color:var(--muted)}
 .dz-tx{display:flex;flex-direction:column;min-width:0;line-height:1.25}
@@ -698,11 +701,11 @@ function promote(id,swapId){
   if(m.apt===undefined)m.apt=aptFromSkill(m.skill);
   if(m.age===undefined)m.age=16+Math.floor(rnd()*15);
   if(m.cult===undefined)m.cult=0;
-  if(inner().length>=INNER_CAP){
+  if(inner().length>=innerCap()){
     const d=inner().find(x=>x.id===swapId);if(!d)return;
     c.inner=inner().filter(x=>x!==d);c.members=c.members.filter(x=>x!==m);
     c.members.push(d);inner().push(m);addLoy(d,-30);
-    bio(d.name+'被降為普通弟子，'+m.name+'升為入室弟子');
+    bio(d.name+'被降為記名弟子，'+m.name+'升為入室弟子');
   }else{c.members=c.members.filter(x=>x!==m);inner().push(m);bio(m.name+'升為入室弟子');}
   addLoy(m,20);c.members.forEach(x=>{if(x!==m)addLoy(x,-5);});
   afterAction();
@@ -712,7 +715,7 @@ function demote(id){
   const c=C();const d=inner().find(x=>x.id===id);if(!d)return false;
   if(c.members.length>=capOf())return false;
   c.inner=inner().filter(x=>x!==d);c.members.push(d);addLoy(d,-30);
-  inner().forEach(x=>addLoy(x,-5));bio(d.name+'被降為普通弟子');
+  inner().forEach(x=>addLoy(x,-5));bio(d.name+'被降為記名弟子');
   afterAction();return true;
 }
 function loyTick(msgs){
@@ -727,7 +730,7 @@ function loyTick(msgs){
 }
 function showSwap(id){
   const m=C().members.find(x=>x.id===id);if(!m)return;
-  pop('<div class="pill-grade">升'+m.name+'為入室弟子</div><p>入室弟子已滿三個，要揀一個降做普通弟子對調。被降嗰個忠誠 −30，'+m.name+'忠誠 +20，其他普通弟子眼紅忠誠 −5。</p><div class="testers">'+
+  pop('<div class="pill-grade">升'+m.name+'為入室弟子</div><p>入室弟子已滿三個，要揀一個降做記名弟子對調。被降嗰個忠誠 −30，'+m.name+'忠誠 +20，其他記名弟子眼紅忠誠 −5。</p><div class="testers">'+
     inner().map(d=>'<button class="btn tester" type="button" data-a="swap" data-id="'+id+'" data-sw="'+d.id+'"><b>同 '+d.name+' 對調</b><small>'+APT[d.apt].n+' · '+ROLES[d.role].n+' · 忠誠 '+Math.round(loy(d))+'</small></button>').join('')+'</div>');
 }
 
@@ -791,7 +794,7 @@ const APT=[
 ];
 const APT_RATE=[25,37,25,10,3];
 const HAO=['劍心','丹痴','小藥王','火鳳','玄冰','無塵','鬼手','青蓮','鐵爐','月影','聽雷','百草'];
-const INNER_CAP=3,DRAW_COST=300;
+const DRAW_COST=300;
 let pendingDraw=null;
 function inner(){const c=C();if(!c.inner)c.inner=[];return c.inner;}
 function innerLife(d){return LIFE[d.realm]+APT[d.apt].life;}
@@ -828,7 +831,7 @@ function innerGrowBrew(msgs){
     while(d.skill<10&&d.xp>=(d.skill+1)*8){d.xp-=(d.skill+1)*8;d.skill++;msgs.push('入室弟子'+d.name+'丹術升到'+SKILL_N[d.skill]);}
   });
 }
-/* 每年：入室弟子修煉、壽元；普通弟子慕名而嚟 */
+/* 每年：入室弟子修煉、壽元；記名弟子慕名而嚟 */
 function yearTick(){
   const pl=P();if(pl.ly===undefined)pl.ly=pl.age;
   let yrs=pl.age-pl.ly;pl.ly=pl.age;if(yrs<=0)return;
@@ -843,20 +846,50 @@ function yearTick(){
     loyTick(msgs);dlTick(msgs);marketDecay();
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
-      if(rnd()*100<ch){const m=genCand();m.cost=0;c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做普通弟子');}
+      if(rnd()*100<ch){const m=genCand();m.cost=0;c.members.push(m);msgs.push(m.name+'慕名而嚟，拜入門下做記名弟子');}
     }
   }
   if(msgs.length)toast(msgs.join('；'),5000);
 }
 /* 中間嗰行 */
 function renderInner(){
-  const box=$('innerRow');const list=inner();let h='';
-  list.forEach(d=>{
-    const A=APT[d.apt];
-    h+='<button class="dz" type="button" data-id="'+d.id+'" style="--apt:'+A.c+'"><span class="dz-av">'+d.name[0]+'</span><span class="dz-tx"><b>'+d.name+'</b><small>'+A.n+' · '+ROLES[d.role].n+'</small></span><span class="dz-bar"><i style="width:'+clamp(d.cult,0,100)+'%"></i></span></button>';
+  const c=C();const d=DL();const L=inner();const ic=innerCap();const mc=capOf();
+  const av=(list,n)=>list.slice(0,n).map(x=>'<span class="dz-av sm" style="--apt:'+(x.apt!==undefined?APT[x.apt].c:'var(--line)')+'">'+x.name[0]+'</span>').join('');
+  let h='';
+  h+='<button class="dz" type="button" data-cell="dl" style="--apt:'+(d?(d.kind==='mo'?'var(--cinnabar)':'var(--jade)'):'var(--line)')+'">'+
+     '<span class="dz-av">'+(d?d.name[0]:'♥')+'</span><span class="dz-tx"><b>道侶 '+(d?1:0)+'/1</b><small>'+(d?d.name+' ♥'+Math.round(d.aff):'靠奇遇結識')+'</small></span></button>';
+  h+='<button class="dz" type="button" data-cell="inner"><span class="dz-stack">'+(L.length?av(L,3):'<span class="dz-av">＋</span>')+'</span><span class="dz-tx"><b>入室 '+L.length+'/'+ic+'</b><small>'+(L.length?L.map(x=>x.name).join('、'):(canDraw()?'收徒抽籤':'要一品丹證'))+'</small></span></button>';
+  h+='<button class="dz" type="button" data-cell="jm"><span class="dz-stack">'+(c.members.length?av(c.members,3):'<span class="dz-av">＋</span>')+'</span><span class="dz-tx"><b>記名 '+c.members.length+'/'+mc+'</b><small>'+(c.aff?(c.members.length?c.members.filter(m=>m.role!=='idle').length+' 人有崗位':'招募記名弟子'):'加入丹會後可收')+'</small></span></button>';
+  $('innerRow').innerHTML=h;
+}
+function showInnerList(){
+  const L=inner();const ic=innerCap();
+  let h='<div class="pill-grade">入室弟子 '+L.length+' / '+ic+'</div>';
+  if(!L.length)h+='<p class="desc">未有入室弟子。</p>';
+  h+='<div class="testers">'+L.map(d=>'<button class="btn tester" type="button" data-a="idet" data-id="'+d.id+'"><b>'+d.name+(d.hao?'「'+d.hao+'」':'')+'</b><small><span style="color:'+APT[d.apt].c+'">'+APT[d.apt].n+'</span> · '+REALMS[d.realm]+' '+Math.floor(d.cult)+'% · '+ROLES[d.role].n+' · 忠誠 '+Math.round(loy(d))+' · '+d.age+'/'+innerLife(d)+' 歲</small></button>').join('')+'</div>';
+  h+='<div class="draw-acts"><button class="btn" type="button" data-a="drawpop"'+(canDraw()?'':' disabled')+'>收徒抽籤（'+DRAW_COST+' 靈石）</button></div>';
+  h+='<p class="desc">'+(C().aff==='own'?'門派等級越高，可收嘅入室弟子越多（而家「'+SECT_LV[C().lvl].n+'」上限 '+ic+'）。':'自創門派之後，門派聲望升級可以收更多入室弟子。')+(canDraw()?'':'要一品丹證先可以收徒。')+'</p><div class="desc" id="popMsg"></div>';
+  pop(h);
+}
+function showJiming(msg){
+  const c=C();const mc=capOf();
+  let h='<div class="pill-grade">記名弟子 '+c.members.length+' / '+mc+'</div>';
+  if(!c.aff){pop(h+'<p>記名弟子要加入煉丹協會、門派或者自創門派之後先可以收。魔頭擄返嚟嘅凡人喺丹途分頁嘅牢房。</p>');return;}
+  h+='<div class="mems">';
+  if(!c.members.length)h+='<div class="desc">未有記名弟子。</div>';
+  c.members.forEach(m=>{
+    h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+'<button class="ib" type="button" data-a="jdis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
+      '<div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="jrole" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+
+      (canDraw()?'<button class="btn" type="button" data-a="jpromo" data-id="'+m.id+'">升為入室弟子'+(inner().length>=innerCap()?'（要對調）':'')+'</button>':'')+'</div>';
   });
-  for(let i=list.length;i<INNER_CAP;i++)h+='<button class="dz empty" type="button" data-a="draw"><span class="dz-av">＋</span><span class="dz-tx"><b>收徒</b><small>'+(canDraw()?'抽籤 '+DRAW_COST+' 靈石':'要一品丹證')+'</small></span></button>';
-  box.innerHTML=h;
+  h+='</div><div class="label" style="align-items:center">招募<button class="btn" type="button" data-a="jref" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
+  c.cands.forEach(m=>{h+='<div class="mem cand"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span></div><button class="btn" type="button" data-a="jrec" data-id="'+m.id+'"'+(c.members.length>=mc||P().stones<m.cost?' disabled':'')+'>招募（'+m.cost+' 靈石）</button></div>';});
+  h+='</div><p class="desc">'+(c.aff==='own'?'門派聲望升級可以收更多記名弟子（而家「'+SECT_LV[c.lvl].n+'」上限 '+mc+'）。':'自創門派之後上限會大增。')+'有名氣之後，每年都有機會有人慕名而嚟。</p><div class="desc" id="popMsg">'+(msg||'')+'</div>';
+  pop(h);
+}
+function showDLCell(){
+  if(DL()){showDL();return;}
+  pop('<div class="pill-grade">道侶 0 / 1</div><p>未有道侶。上山採藥同下山斬妖嘅奇遇有機會結識：救重傷女魔頭，佢可能以身相許；或者喺溪邊邂逅仙子、俠客。</p><p class="desc">道侶每年同你雙修加修為，好感 50 以上仲會幫手煉丹。</p>');
 }
 function pop(html){$('popBody').innerHTML=html;$('pop').hidden=false;}
 function closePop(){$('pop').hidden=true;pendingDraw=null;}
@@ -873,13 +906,13 @@ function showDisciple(id){
     '<dt>忠誠</dt><dd>'+loyTag(d)+' <span class="desc">'+(loy(d)<30?'心存不滿，做嘢效果減半':loy(d)>=80?'死心塌地，做嘢效果多一成':'安份守己')+'</span></dd>'+
     '<dt>任命</dt><dd>'+ROLES[d.role].n+'：'+ROLES[d.role].d+'</dd></dl>'+
     '<div class="label">改派工作</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="irole" data-id="'+d.id+'" data-r="'+k+'" aria-pressed="'+(d.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+
-    '<div class="more-row"><button class="btn" type="button" data-a="drawpop">再收徒（抽籤）</button><button class="btn" type="button" data-a="demote" data-id="'+d.id+'"'+(C().members.length>=capOf()?' disabled title="普通弟子已滿"':' title="降做普通弟子：佢忠誠 −30，其他入室弟子 −5"')+'>降為普通弟子</button><button class="btn danger" type="button" data-a="expel" data-id="'+d.id+'">逐出師門</button></div><div class="desc" id="popMsg"></div>');
+    '<div class="more-row"><button class="btn" type="button" data-a="ilist">返入室名單</button><button class="btn" type="button" data-a="drawpop">再收徒（抽籤）</button><button class="btn" type="button" data-a="demote" data-id="'+d.id+'"'+(C().members.length>=capOf()?' disabled title="記名弟子已滿"':' title="降做記名弟子：佢忠誠 −30，其他入室弟子 −5"')+'>降為記名弟子</button><button class="btn danger" type="button" data-a="expel" data-id="'+d.id+'">逐出師門</button></div><div class="desc" id="popMsg"></div>');
 }
 function showDraw(){
   const c=C();
   if(!canDraw()){pop('<div class="pill-grade">收入室弟子</div><p>你仲未有丹證，冇人肯拜你為師。考到一品丹證之後再嚟。</p>');return;}
   pop('<div class="pill-grade">收徒抽籤</div><div class="pill-name">拜師緣</div>'+
-    '<p class="desc">喺山門擺開收徒大會，每次 '+DRAW_COST+' 靈石。入室弟子最多 '+INNER_CAP+' 個，資質越高，修煉越快、做嘢效果越好、壽元越長。</p>'+
+    '<p class="desc">喺山門擺開收徒大會，每次 '+DRAW_COST+' 靈石。入室弟子最多 '+innerCap()+' 個，資質越高，修煉越快、做嘢效果越好、壽元越長。</p>'+
     '<div class="rates">'+APT.map((a,i)=>'<span style="color:'+a.c+'">'+a.n+' '+APT_RATE[i]+'%</span>').join('')+'</div>'+
     '<p class="desc">保底：再抽 '+(10-(c.pity||0))+' 次內必出絕世或以上。</p>'+
     '<div class="more-row"><button class="go" type="button" data-a="dodraw"'+(P().stones<DRAW_COST?' disabled':'')+'>抽籤</button></div><div class="desc" id="popMsg">你有 '+P().stones+' 靈石</div>');
@@ -887,32 +920,39 @@ function showDraw(){
 function doDraw(){
   if(P().stones<DRAW_COST){$('popMsg').textContent='靈石唔夠';return;}
   P().stones-=DRAW_COST;const d=genInner(rollApt());pendingDraw=d;save.st.draws=(save.st.draws||0)+1;persist();renderAll();
-  const A=APT[d.apt];const full=inner().length>=INNER_CAP;const c=C();
+  const A=APT[d.apt];const full=inner().length>=innerCap();const c=C();
   let h='<div class="pill-grade">收徒抽籤</div><div class="draw-card'+(d.apt>=3?' rare':'')+'" style="--apt:'+A.c+'"><span class="dz-av big">'+d.name[0]+'</span><div><div class="pill-grade" style="color:'+A.c+'">資質：'+A.n+(d.hao?' · 號「'+d.hao+'」':'')+'</div><div class="pill-name">'+d.name+'</div>'+
     '<div class="desc">'+PERS[d.pers].n+' · '+REALMS[d.realm]+'期 · 丹術'+SKILL_N[d.skill]+' · '+d.age+' 歲</div></div></div>';
   h+='<div class="draw-acts">';
   if(!full)h+='<button class="btn" type="button" data-a="take">收為入室弟子</button>';
   else inner().forEach(x=>{h+='<button class="btn" type="button" data-a="take" data-rep="'+x.id+'">換走 '+x.name+'（'+APT[x.apt].n+'）</button>';});
-  if(c.aff&&c.members.length<capOf())h+='<button class="btn" type="button" data-a="takeNormal">收做普通弟子</button>';
+  if(c.aff&&c.members.length<capOf())h+='<button class="btn" type="button" data-a="takeNormal">收做記名弟子</button>';
   h+='<button class="btn" type="button" data-a="decline">婉拒</button><button class="btn" type="button" data-a="dodraw"'+(P().stones<DRAW_COST?' disabled':'')+'>再抽一次（'+DRAW_COST+'）</button></div><div class="desc" id="popMsg"></div>';
   pop(h);
 }
 function takeDraw(rep){
   const d=pendingDraw;if(!d)return;const c=C();
   if(rep){const old=inner().find(x=>x.id===rep);c.inner=inner().filter(x=>x.id!==rep);if(old)toast(old.name+'出師下山，自立門戶去');}
-  if(inner().length>=INNER_CAP)return;
+  if(inner().length>=innerCap())return;
   inner().push(d);save.st.bestApt=Math.max(save.st.bestApt||0,d.apt);bio('收'+d.name+'（'+APT[d.apt].n+'資質）為入室弟子');pendingDraw=null;closePop();afterAction();toast(d.name+'正式拜入門下，成為入室弟子');
 }
 function onPopClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a;
   if(a==='dodraw')doDraw();
+  else if(a==='idet')showDisciple(+b.dataset.id);
+  else if(a==='ilist')showInnerList();
+  else if(a==='jrole'){const m=C().members.find(x=>x.id===+b.dataset.id);if(m){m.role=b.dataset.r;persist();renderAll();showJiming();}}
+  else if(a==='jdis'){const m=C().members.find(x=>x.id===+b.dataset.id);C().members=C().members.filter(x=>x.id!==+b.dataset.id);afterAction();showJiming(m?m.name+'執包袱落山。':'');}
+  else if(a==='jrec'){const c=C();const m=c.cands.find(x=>x.id===+b.dataset.id);if(m&&c.members.length<capOf()&&P().stones>=m.cost){P().stones-=m.cost;c.cands=c.cands.filter(x=>x!==m);c.members.push(m);afterAction();showJiming(m.name+'加入做記名弟子。');}}
+  else if(a==='jref'){refreshCands(false);persist();renderAll();showJiming();}
+  else if(a==='jpromo'){const id=+b.dataset.id;if(inner().length>=innerCap())showSwap(id);else{const m=promote(id);showJiming(m?m.name+'升為入室弟子，其他記名弟子有啲眼紅。':'');}}
   else if(a==='drawpop')showDraw();
   else if(a==='take')takeDraw(b.dataset.rep?+b.dataset.rep:0);
-  else if(a==='takeNormal'){const d=pendingDraw;if(!d)return;const c=C();if(c.members.length>=capOf())return;c.members.push({id:d.id,name:d.name,f:d.f,pers:d.pers,skill:d.skill,xp:0,realm:d.realm,role:'idle',cost:0});pendingDraw=null;closePop();afterAction();toast(d.name+'做咗普通弟子');}
+  else if(a==='takeNormal'){const d=pendingDraw;if(!d)return;const c=C();if(c.members.length>=capOf())return;c.members.push({id:d.id,name:d.name,f:d.f,pers:d.pers,skill:d.skill,xp:0,realm:d.realm,role:'idle',cost:0});pendingDraw=null;closePop();afterAction();toast(d.name+'做咗記名弟子');}
   else if(a==='decline'){closePop();}
   else if(a==='irole'){const d=inner().find(x=>x.id===+b.dataset.id);if(d){d.role=b.dataset.r;persist();renderAll();showDisciple(d.id);}}
   else if(a==='dlsx'||a==='dlgift'||a==='dlbye')dlAction(a,b);
-  else if(a==='demote'){const id=+b.dataset.id;const d=inner().find(x=>x.id===id);if(demote(id)){closePop();toast(d.name+'被降為普通弟子，佢好唔開心');}}
+  else if(a==='demote'){const id=+b.dataset.id;const d=inner().find(x=>x.id===id);if(demote(id)){closePop();toast(d.name+'被降為記名弟子，佢好唔開心');}}
   else if(a==='swap'){const m=promote(+b.dataset.id,+b.dataset.sw);closePop();if(m)toast(m.name+'升為入室弟子');}
   else if(a==='expel'){
     if(b.dataset.armed){const id=+b.dataset.id;const d=inner().find(x=>x.id===id);C().inner=inner().filter(x=>x.id!==id);closePop();afterAction();if(d)toast(d.name+'被逐出師門，喊住落山');}
@@ -1194,11 +1234,11 @@ const SECTS={
   baicao:{n:'百草谷',d:'自家藥園，藥材八八折。'}
 };
 const SECT_LV=[
-  {n:'草廬',need:0,cap:3,disc:0,stab:0,inc:0,d:'可收 3 個徒弟。'},
-  {n:'小宗',need:120,cap:5,disc:5,stab:3,inc:20,d:'可收 5 個徒弟，藥材九五折，丹爐穩定 +3，每爐門派收入 20。'},
-  {n:'名門',need:350,cap:7,disc:10,stab:6,inc:50,d:'可收 7 個徒弟，藥材九折，丹爐穩定 +6，每爐收入 50，賣丹價錢 +20%。'},
-  {n:'大宗',need:800,cap:9,disc:15,stab:9,inc:90,d:'可收 9 個徒弟，藥材八五折，丹爐穩定 +9，每爐收入 90，招募到更高丹術嘅弟子。'},
-  {n:'聖地',need:1600,cap:12,disc:20,stab:12,inc:150,d:'可收 12 個徒弟，藥材八折，丹爐穩定 +12，每爐收入 150，壽元 +300。'}
+  {n:'草廬',need:0,cap:10,icap:3,disc:0,stab:0,inc:0,d:'入室弟子 3 個、記名弟子 10 個。'},
+  {n:'小宗',need:120,cap:12,icap:4,disc:5,stab:3,inc:20,d:'入室弟子 4 個、記名弟子 12 個，藥材九五折，丹爐穩定 +3，每爐門派收入 20。'},
+  {n:'名門',need:350,cap:15,icap:5,disc:10,stab:6,inc:50,d:'入室弟子 5 個、記名弟子 15 個，藥材九折，丹爐穩定 +6，每爐收入 50，賣丹價錢 +20%。'},
+  {n:'大宗',need:800,cap:18,icap:6,disc:15,stab:9,inc:90,d:'入室弟子 6 個、記名弟子 18 個，藥材八五折，丹爐穩定 +9，每爐收入 90，招募到更高丹術嘅弟子。'},
+  {n:'聖地',need:1600,cap:24,icap:7,disc:20,stab:12,inc:150,d:'入室弟子 7 個、記名弟子 24 個，藥材八折，丹爐穩定 +12，每爐收入 150，壽元 +300。'}
 ];
 const PERS={
   wen:{n:'穩重',d:'助爐時丹爐特別穩',q:.8,s:1.6,g:1},
@@ -1214,7 +1254,8 @@ const GIVEN=[['清風',0],['明月',1],['靈兒',1],['鐵柱',0],['二狗',0],['
 function newCareer(){return{skill:0,sxp:0,cert:0,aff:null,sect:null,sectName:'',lvl:0,pres:0,members:[],cands:[],nid:1};}
 function C(){const pl=P();if(!pl.car)pl.car=newCareer();return pl.car;}
 function skillNeed(lv){return 20+lv*15;}
-function capOf(){const c=C();return c.aff==='own'?SECT_LV[c.lvl].cap:c.aff==='sect'?4:c.aff==='xie'?2:0;}
+function capOf(){const c=C();return c.aff==='own'?SECT_LV[c.lvl].cap:c.aff==='sect'?6:c.aff==='xie'?4:0;}
+function innerCap(){const c=C();return c.aff==='own'?SECT_LV[c.lvl].icap:3;}
 function juniorWord(m){if(m&&m.apt!==undefined&&inner().includes(m))return'入室弟子';const c=C();return c.aff==='own'?'徒弟':(m&&m.f?'師妹':'師弟');}
 function titleOf(){
   const t=titleBase();return MO().on?'魔頭 · '+t:t;
@@ -1303,7 +1344,7 @@ function takeExam(){
   else carMsg('考試時手震，炸咗考場個爐。考官搖頭，下次再嚟。（合格機會約 '+Math.round(chance*100)+'%）');
   afterAction();
 }
-function joinXie(){if(MO().on){carMsg('丹協一見你就關門：「魔頭免問！」');return;}const c=C();if(c.cert<1){carMsg('要有一品丹證先可以加入煉丹協會');return;}c.aff='xie';refreshCands(true);const gb=giftBooks('xie');carMsg('你加入咗煉丹協會：藥材九折，賣丹多一成，可招募 2 個師弟妹。'+(gb.length?'丹會送你'+gb.join('、')+'。':''));afterAction();}
+function joinXie(){if(MO().on){carMsg('丹協一見你就關門：「魔頭免問！」');return;}const c=C();if(c.cert<1){carMsg('要有一品丹證先可以加入煉丹協會');return;}c.aff='xie';refreshCands(true);const gb=giftBooks('xie');carMsg('你加入咗煉丹協會：藥材九折，賣丹多一成，可招 4 個記名弟子。'+(gb.length?'丹會送你'+gb.join('、')+'。':''));afterAction();}
 function joinSect(id){
   if(MO().on){carMsg('正道門派見到你就放狗。');return;}
   const c=C();if(c.cert<3||P().realm<1){carMsg('要三品丹證同築基期先有門派肯收你');return;}
@@ -1374,7 +1415,7 @@ function renderCareer(){
     if(!c.members.length)h+='<div class="desc">未有人，喺下面招募。</div>';
     c.members.forEach(m=>{
       h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+'<button class="ib" type="button" data-a="dis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
-         '<div class="desc">'+PERS[m.pers].d+'</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="role" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+(canDraw()?'<button class="btn" type="button" data-a="promo" data-id="'+m.id+'" title="升為入室弟子：佢忠誠 +20，其他普通弟子 −5">升為入室弟子'+(inner().length>=INNER_CAP?'（要同人對調）':'')+'</button>':'')+'</div>';
+         '<div class="desc">'+PERS[m.pers].d+'</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="role" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+(canDraw()?'<button class="btn" type="button" data-a="promo" data-id="'+m.id+'" title="升為入室弟子：佢忠誠 +20，其他記名弟子 −5">升為入室弟子'+(inner().length>=innerCap()?'（要同人對調）':'')+'</button>':'')+'</div>';
     });
     h+='</div><div class="label" style="margin-top:8px;align-items:center">招募<button class="btn" type="button" data-a="refresh" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
     c.cands.forEach(m=>{
@@ -1389,7 +1430,7 @@ function onCareerClick(e){
   const a=b.dataset.a,id=+b.dataset.id;
   if(a==='exam')takeExam();else if(a==='xie')joinXie();else if(a==='sect')joinSect(b.dataset.id);
   else if(a==='own')createSect(($('sectName')||{}).value);else if(a==='rec')recruit(id);else if(a==='dis')dismiss(id);
-  else if(a==='role')setRole(id,b.dataset.r);else if(a==='prole')setPRole(id,b.dataset.r);else if(a==='free')release(id);else if(a==='promo'){if(inner().length>=INNER_CAP){$('modal').hidden=true;showSwap(id);}else{const m=promote(id);if(m)carMsg(m.name+'升為入室弟子，其他普通弟子有啲眼紅。');}}else if(a==='refresh'){refreshCands(false);persist();renderAll();}
+  else if(a==='role')setRole(id,b.dataset.r);else if(a==='prole')setPRole(id,b.dataset.r);else if(a==='free')release(id);else if(a==='promo'){if(inner().length>=innerCap()){$('modal').hidden=true;showSwap(id);}else{const m=promote(id);if(m)carMsg(m.name+'升為入室弟子，其他記名弟子有啲眼紅。');}}else if(a==='refresh'){refreshCands(false);persist();renderAll();}
 }
 
 function unlockedSet(){const set=new Set(START);ACHS.forEach(a=>{if(save.ach.includes(a.id))a.u.forEach(k=>set.add(k));});return set;}
@@ -1868,7 +1909,7 @@ function renderStats(){
     '<span class="stat"><span class="k">心魔</span>'+m(pl.demon,'var(--cinnabar)')+'<b>'+Math.round(pl.demon)+'</b></span>'+
     '<span class="stat"><span class="k">年歲</span><b>'+pl.age+'/'+(ls>9000?'∞':ls)+'</b></span>'+
     '<span class="stat"><span class="k">靈石</span><b>'+pl.stones+'</b></span>'+
-    (DL()?'<button class="stat dlbtn" type="button" id="dlBtn" title="撳嚟睇道侶"><span class="k">道侶</span><b>'+DL().name+'</b><span class="heart">♥'+Math.round(DL().aff)+'</span></button>':'')+
+
     (MO().on?'<span class="stat"><span class="k" style="color:var(--cinnabar)">惡名</span><b>'+Math.round(MO().infamy)+'</b></span>':'')+
     (()=>{const ta=LN().shidi,oa=LN().oldAge,mk=(P().mo&&P().mo.killed)||0;return'<span class="stat" title="試藥害死嘅師弟妹／弟子 '+ta+'，壽終坐化嘅入室弟子 '+oa+(mk?'；另外試藥害死凡人 '+mk:'')+'"><span class="k">已故弟子</span><b>'+(ta+oa)+'</b>'+(mk?'<span class="k">凡人</span><b>'+mk+'</b>':'')+'</span>';})();
   {const c=C();$('openCar').textContent=c.aff==='own'?c.sectName:c.aff==='sect'?SECTS[c.sect].n:c.aff==='xie'?'丹協':'丹途';}
@@ -1908,10 +1949,10 @@ $('openAch').onclick=()=>{mTab='ach';$('modal').hidden=false;$('mMsg').textConte
 $('mClose').onclick=()=>{$('modal').hidden=true;};
 $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').hidden=true;};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').hidden=true;closePop();}});
-$('innerRow').addEventListener('click',e=>{const b=e.target.closest('.dz');if(!b||busy)return;if(b.dataset.a==='draw')showDraw();else showDisciple(+b.dataset.id);});
+$('innerRow').addEventListener('click',e=>{const b=e.target.closest('.dz');if(!b||busy)return;const k=b.dataset.cell;if(k==='dl')showDLCell();else if(k==='inner')showInnerList();else if(k==='jm')showJiming();});
 $('pop').addEventListener('click',e=>{if(e.target===$('pop')){closePop();return;}onPopClick(e);});
 $('popClose').onclick=closePop;
-$('stats').addEventListener('click',e=>{if(e.target.closest('#dlBtn')&&!busy)showDL();});
+
 $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
 $('mtLife').onclick=()=>{mTab='life';renderModal();};
