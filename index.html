@@ -183,6 +183,10 @@ canvas{display:block;width:100%;height:100%}
 .codex{display:flex;flex-wrap:wrap;gap:4px}
 .codex span{font-size:13px;padding:1px 7px;border-radius:3px;background:var(--panel2);border:1px solid var(--line)}
 .codex span.unk{color:var(--dim)}
+.codex .cx{font-size:13px;padding:1px 7px;border-radius:3px;background:#4a3520;border:1px solid var(--bronze);color:#fff3da;display:inline-flex;align-items:baseline;gap:3px}
+.codex .cx:hover:not(:disabled){background:#5d4329}
+.codex .cx:disabled{opacity:.5;cursor:not-allowed;background:var(--panel2);border-color:var(--line)}
+.codex .cx small{font-size:10.5px;color:var(--jade)}
 .cheat{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .cheat input{background:var(--ink);border:1px solid var(--line);border-radius:4px;padding:5px 8px;color:var(--paper);font:inherit;min-width:0;flex:1;max-width:240px}
 .meter.wide{width:90px;display:inline-block;vertical-align:middle}
@@ -520,10 +524,11 @@ function missingFor(c){
   return m;
 }
 function applyRecipe(name){
-  const e=recipes()[name];if(!e||busy)return;
-  const miss=missingFor(e.cfg);if(miss.length){bookMsg('配唔到：未有'+miss.join('、'));return;}
+  const e=recipes()[name];if(!e||busy)return false;
+  const miss=missingFor(e.cfg);if(miss.length){bookMsg('配唔到：未有'+miss.join('、'));return false;}
   Object.assign(cfg,JSON.parse(JSON.stringify(e.cfg)));
   $('modal').hidden=true;renderAll();toast('已經按丹書配好「'+name+'」');
+  return true;
 }
 function masteryN(c){return c>=10?'爐火純青':c>=6?'精通':c>=3?'熟手':c>=1?'初識':'生疏';}
 function masteryBonus(c){return{q:Math.min(c*1.5,15),s:Math.min(c*3,24)};}
@@ -1246,17 +1251,22 @@ function renderAll(){
 /* ---------- 成就／丹譜彈窗 ---------- */
 let mTab='ach';
 function renderModal(){
-  $('mtBook').setAttribute('aria-selected',mTab==='book');$('mtShop').setAttribute('aria-selected',mTab==='shop');
+  [['mtBook','book'],['mtShop','shop'],['mtAch','ach'],['mtCodex','codex'],['mtCar','car']].forEach(([id,t])=>$(id).setAttribute('aria-selected',mTab===t));
   if(mTab==='book'){$('mTitle').innerHTML='丹書<span>'+Object.keys(recipes()).length+' 條丹方　'+books().length+' 本藏書</span>';renderBooks();return;}
   if(mTab==='shop'){$('mTitle').innerHTML='商行<span>你有 '+P().stones+' 靈石</span>';renderShop();return;}
-  $('mtAch').setAttribute('aria-selected',mTab==='ach');$('mtCodex').setAttribute('aria-selected',mTab==='codex');$('mtCar').setAttribute('aria-selected',mTab==='car');
   if(mTab==='car'){$('mTitle').innerHTML='丹途門派<span>'+titleOf()+'</span>';renderCareer();return;}
   if(mTab==='ach'){
     $('mTitle').innerHTML='成就<span>已達成 '+save.ach.length+' / '+ACHS.length+'　第 '+save.lives+' 世</span>';
     $('mBody').innerHTML='<div class="achs">'+ACHS.map(a=>{const ok=save.ach.includes(a.id);return'<div class="ach'+(ok?'':' no')+'"><b>'+a.n+'</b><small>'+a.d+'</small>'+(a.u.length?'<span class="u">'+(ok?'已解鎖：'+a.u.map(labelOf).join('、'):'解鎖 '+a.u.length+' 項新選項')+'</span>':'')+'</div>';}).join('')+'</div>';
   }else{
     $('mTitle').innerHTML='丹譜<span>已收錄 '+save.codex.length+' / '+ALL_PILLS.length+'</span>';
-    $('mBody').innerHTML='<div class="codex">'+ALL_PILLS.map(n=>save.codex.includes(n)?'<span>'+n+'</span>':'<span class="unk">'+'？'.repeat(n.length)+'</span>').join('')+'</div>';
+    const R=recipes(),M=mastery();
+    $('mBody').innerHTML='<div class="desc">金框嘅丹藥丹書有配方，撳一下即刻配好開爐。</div><div class="codex" style="margin-top:6px">'+ALL_PILLS.map(n=>{
+      if(!save.codex.includes(n))return'<span class="unk">'+'？'.repeat(n.length)+'</span>';
+      if(!R[n])return'<span title="丹書未有配方（失敗品唔會記錄）">'+n+'</span>';
+      const miss=missingFor(R[n].cfg);
+      return'<button type="button" class="cx" data-a="brew" data-n="'+n+'" title="'+(miss.length?'未有：'+miss.join('、'):'撳一下即煉，'+masteryN(M[n]||0))+'"'+(miss.length?' disabled':'')+'>'+n+(M[n]?'<small>×'+M[n]+'</small>':'')+'</button>';
+    }).join('')+'</div>';
   }
 }
 $('openAch').onclick=()=>{mTab='ach';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
@@ -1267,7 +1277,10 @@ $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
 $('mtCar').onclick=()=>{mTab='car';$('mMsg').textContent='';renderModal();};
 $('openCar').onclick=()=>{mTab='car';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
-$('mBody').addEventListener('click',e=>{if(mTab==='car')onCareerClick(e);else if(mTab==='book'||mTab==='shop')onBookClick(e);});
+$('mBody').addEventListener('click',e=>{
+  if(mTab==='codex'){const b=e.target.closest('[data-a=brew]');if(b&&!b.disabled&&applyRecipe(b.dataset.n)){
+    if(P().stones<costOf()){toast('已配好「'+b.dataset.n+'」，但靈石唔夠開爐（要 '+costOf()+'）',3500);}else brew();}return;}
+  if(mTab==='car')onCareerClick(e);else if(mTab==='book'||mTab==='shop')onBookClick(e);});
 function openTab(t){mTab=t;$('modal').hidden=false;$('mMsg').textContent='';renderModal();}
 $('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('openShop').onclick=()=>openTab('shop');
 $('mtBook').onclick=()=>openTab('book');$('mtShop').onclick=()=>openTab('shop');
