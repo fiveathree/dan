@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%}
   .ing .meta{font-size:9.5px}
   .dock{padding:6px 8px;gap:4px}
   .wx{flex:1 1 100%}
-  #dockBook{display:none}
+  #dockBook,#dockCar{display:none}
   .go{margin-left:auto}
   .rate b{font-size:19px}
   .hbtns{flex-wrap:wrap}
@@ -294,7 +294,7 @@ canvas{display:block;width:100%;height:100%}
       </div>
       <div class="inner-row" id="innerRow" aria-label="入室弟子"></div>
       <div class="dock">
-        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
+        <div class="dock-row"><ol class="order" id="order"></ol><button class="btn" id="dockCar" type="button">丹途</button><button class="btn" id="dockBook" type="button">翻丹書配藥</button></div>
         <div class="dock-row">
           <div class="wx"><span>五行</span><div class="wx-bar" id="wxBar"></div><span>陰</span><div class="yy-track"><i id="yyNeedle" style="left:50%"></i></div><span>陽</span></div>
           <span class="rate" id="rate" title="唔炸爐又煉得成丹嘅機會">成功率<b>—</b></span>
@@ -531,7 +531,7 @@ function yearTick(){
       d.age++;d.cult+=(3+d.skill*.6)*APT[d.apt].g*(d.pers==='lan'?.5:1);
       while(d.cult>=100&&d.realm<5){d.cult-=100;d.realm++;msgs.push('入室弟子'+d.name+'突破到「'+REALMS[d.realm]+'」');}
       if(d.realm>=5)d.cult=Math.min(d.cult,100);
-      if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
+      if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
     if(c.aff&&!MO().on&&c.members.length<capOf()){
       const ch=c.cert*2+(c.aff==='own'?5+c.lvl*6:c.aff==='sect'?3:1);
@@ -1558,7 +1558,7 @@ function renderStats(){
     '<span class="stat"><span class="k">年歲</span><b>'+pl.age+'/'+(ls>9000?'∞':ls)+'</b></span>'+
     '<span class="stat"><span class="k">靈石</span><b>'+pl.stones+'</b></span>'+
     (MO().on?'<span class="stat"><span class="k" style="color:var(--cinnabar)">惡名</span><b>'+Math.round(MO().infamy)+'</b></span>':'')+
-    '<span class="stat"><span class="k">已故師弟</span><b>'+save.shidi+'</b></span>';
+    (()=>{const ta=save.shidi,oa=save.st.oldAge||0,mk=(P().mo&&P().mo.killed)||0;return'<span class="stat" title="試藥害死嘅師弟妹／弟子 '+ta+'，壽終坐化嘅入室弟子 '+oa+(mk?'；另外試藥害死凡人 '+mk:'')+'"><span class="k">已故弟子</span><b>'+(ta+oa)+'</b>'+(mk?'<span class="k">凡人</span><b>'+mk+'</b>':'')+'</span>';})();
   {const c=C();$('openCar').textContent=c.aff==='own'?c.sectName:c.aff==='sect'?SECTS[c.sect].n:c.aff==='xie'?'丹協':'丹途';}
   $('openAch').textContent='成就 '+save.ach.length+'/'+ACHS.length+(save.cheat?'・秘':'');
 }
@@ -1566,7 +1566,7 @@ function renderAll(){
   renderRecipe();renderShelf();renderStats();renderInner();
   $('go').disabled=busy||!P().alive||!cfg.order.length;
   $('go').textContent=busy?'煉製中':'開爐';
-  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;$('grab').hidden=!MO().on;$('grab').disabled=busy||!P().alive;$('dockBook').disabled=busy;
+  $('task').disabled=busy||!P().alive;$('herb').disabled=busy||!P().alive;$('grab').hidden=!MO().on;$('grab').disabled=busy||!P().alive;$('dockBook').disabled=busy;$('dockCar').disabled=busy;
   if(!$('modal').hidden)renderModal();
 }
 
@@ -1607,7 +1607,7 @@ $('mBody').addEventListener('click',e=>{
     if(P().stones<costOf()){toast('已配好「'+b.dataset.n+'」，但靈石唔夠開爐（要 '+costOf()+'）',3500);}else brew();}return;}
   if(mTab==='car')onCareerClick(e);else if(mTab==='book'||mTab==='shop')onBookClick(e);});
 function openTab(t){mTab=t;$('modal').hidden=false;$('mMsg').textContent='';renderModal();}
-$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('openShop').onclick=()=>openTab('shop');
+$('openBook').onclick=()=>openTab('book');$('dockBook').onclick=()=>openTab('book');$('dockCar').onclick=()=>openTab('car');$('openShop').onclick=()=>openTab('shop');
 $('mtBook').onclick=()=>openTab('book');$('mtShop').onclick=()=>openTab('shop');
 function cheat(){
   const v=$('cheatIn').value.trim();$('cheatIn').value='';
