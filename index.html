@@ -255,6 +255,8 @@ canvas{display:block;width:100%;height:100%}
 .mt-tip{position:absolute;right:10px;bottom:6px;font-size:11px;color:#d9c9a8;text-shadow:0 1px 3px #000;max-width:60%;text-align:right;pointer-events:none}
 @media (max-width:860px){.mt-svg{max-height:none}.mt-tip{display:none}}.mt-n:hover circle{filter:brightness(1.4)}.mt-n.off{cursor:default}
 .mt-name{position:absolute;left:10px;top:8px;font-family:var(--display);font-size:16px;color:var(--bronze);text-shadow:0 1px 4px #000}
+.ms-go{border-color:var(--jade)}
+.desc.good{color:var(--jade)}
 .job-sec{margin-top:6px;border-left:3px solid var(--bronze);padding-left:8px}
 .job-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .job-h b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--bronze)}
@@ -1050,7 +1052,7 @@ function questList(){
   if(c.aff==='own'&&allDisc().length){const k=STASK().filter(t=>t.on).length;L.push({k:'任務榜',t:k?'已發佈 '+k+' 項，弟子自己接':'未發佈任務',ok:!!k,go:()=>openTab('car')});}
   ORD().forEach(o=>L.push({k:o.urgent?'急單':'委託',t:o.who+' 求'+o.name+'×'+o.need+' · '+o.wait+'年'+(o.dz?' · 委派中':''),ok:sampleIdx(o)>=0||!!orderFor(current)&&orderFor(current).id===o.id,go:()=>{if(current&&orderFor(current)&&orderFor(current).id===o.id)showDeliver(o.id);else{bookSub='ord';bookSel=o.id;openTab('book');}}}));
   if(c.daiOn&&headD())L.push({k:'代煉',t:headD().name+'每年代你煉一爐',ok:false,go:()=>showDisciple(headD().id)});
-  {const M=MSN();if(M.active.length||M.offers.length)L.push({k:'外務',t:M.active.length+' 件進行中'+(M.offers.length?'、'+M.offers.length+' 件可接':''),ok:M.active.some(x=>!x.team.length)?false:!!M.active.length,go:()=>openHub('ms2')});}
+  {const M=MSN();if(M.active.length||M.offers.length)L.push({k:'外務',t:M.active.length+' 件'+(M.active.some(x=>!x.go)?'（'+M.active.filter(x=>!x.go).length+' 件未出發）':'進行中')+(M.offers.length?'、'+M.offers.length+' 件可接':''),ok:M.active.length>0&&M.active.every(x=>x.go),go:()=>openHub('ms2')});}
   REQS().forEach(r=>L.push({k:reqLabel(r),t:r.name+' '+reqShort(r)+' · '+r.left+'年'+(r.dz?' · 委派中':''),ok:reqReady(r),go:()=>showReq(r.id)}));
   return L;
 }
@@ -2025,7 +2027,7 @@ function missionTick(){
   M.offers=M.offers.filter(o=>--o.wait>0);
   if(M.offers.length<3&&(C().aff||FM().g>=20)&&rnd()<.45+FM().g/400)newMission();
   M.active.slice().forEach(x=>{
-    if(!x.team.length){log('任務','「'+MS_T[x.k].n+'」冇人去做，拖延咗','bad');x.left--;if(x.left<=0)M.active=M.active.filter(y=>y!==x);return;}
+    if(!x.team.length||!x.go){log('任務','「'+MS_T[x.k].n+'」'+(x.team.length?'未確認出發':'冇人去做')+'，拖延咗','bad');x.left--;if(x.left<=0)M.active=M.active.filter(y=>y!==x);return;}
     const ok=rnd()<msChance(x);const names=x.team.map(id=>id==='dl'?DL().name:(allDisc().find(m=>m.id===id)||{}).name).filter(Boolean).join('、');
     if(ok){let r='';
       if(x.k==='brew'){const v=150*x.g+50;P().stones+=v;r='交咗今年嘅丹，收 '+v+' 靈石';addFame(1);}
@@ -2045,9 +2047,10 @@ function showMissions(msg){
   h+='<div class="label">進行中（'+M.active.length+'）</div>';
   if(!M.active.length)h+='<div class="desc">未有接任務。</div>';
   M.active.forEach(x=>{const T=MS_T[x.k];
-    h+='<div class="mem"><div class="mem-h"><b>'+T.n+'</b><span class="tag">'+x.who+'</span><span class="tag">難度 '+'★'.repeat(x.g)+'</span><span class="desc">睇'+T.stat+' · 仲有 '+x.left+' 年 · 成功約 <b>'+Math.round(msChance(x)*100)+'%</b></span></div>'+
-      '<div class="chips">'+(x.team.length?x.team.map(id=>'<button class="chip" type="button" data-a="msout" data-ms="'+x.id+'" data-id="'+id+'" title="撤返">'+nm(id)+' ✕</button>').join(''):'<span class="desc">未派人</span>')+'</div>'+
-      '<div class="car-act"><select data-msadd="'+x.id+'" aria-label="加人"><option value="">＋ 加人…</option>'+(dlFree?'<option value="dl">'+DL().name+'（道侶，'+T.stat+' '+msScore(x.k,'dl')+'）</option>':'')+free.map(m=>'<option value="'+m.id+'">'+m.name+'（'+RANKS[rankOf(m)].replace('弟子','')+'，'+T.stat+' '+Math.round(msScore(x.k,m))+'）</option>').join('')+'</select><button class="btn" type="button" data-a="msdrop" data-ms="'+x.id+'">放棄</button></div></div>';});
+    h+='<div class="mem'+(x.go?' ms-go':'')+'"><div class="mem-h"><b>'+T.n+'</b>'+(x.go?'<span class="tag good">已出發</span>':'<span class="tag bad">未出發</span>')+'<span class="tag">'+x.who+'</span><span class="tag">難度 '+'★'.repeat(x.g)+'</span><span class="desc">睇'+T.stat+' · 仲有 '+x.left+' 年 · 成功約 <b>'+Math.round(msChance(x)*100)+'%</b></span></div>'+
+      '<div class="chips">'+(x.team.length?x.team.map(id=>x.go?'<span class="chip" aria-pressed="true">'+nm(id)+'</span>':'<button class="chip" type="button" data-a="msout" data-ms="'+x.id+'" data-id="'+id+'" title="撤返">'+nm(id)+' ✕</button>').join(''):'<span class="desc">未派人</span>')+'</div>'+
+      (x.go?'<div class="desc good">'+x.team.map(nm).join('、')+'已經出發，'+(T.years>1?'每年':'今年年尾')+'結算（成功約 '+Math.round(msChance(x)*100)+'%）。</div>':'')+
+      (x.go?'':'<div class="car-act"><select data-msadd="'+x.id+'" aria-label="加人"><option value="">＋ 加人…</option>'+(dlFree?'<option value="dl">'+DL().name+'（道侶，'+T.stat+' '+msScore(x.k,'dl')+'）</option>':'')+free.map(m=>'<option value="'+m.id+'">'+m.name+'（'+RANKS[rankOf(m)].replace('弟子','')+'，'+T.stat+' '+Math.round(msScore(x.k,m))+'）</option>').join('')+'</select><button class="go" type="button" data-a="msgo" data-ms="'+x.id+'" style="padding:3px 14px;font-size:15px"'+(x.team.length?'':' disabled title="要先加人"')+'>確認出發（'+x.team.length+' 人）</button><button class="btn" type="button" data-a="msdrop" data-ms="'+x.id+'">放棄</button></div>')+'</div>';});
   h+='<div class="label">可接任務（'+M.offers.length+'）<em>有門派或者有名氣先會有人搵；兩年唔接就冇</em></div>';
   if(!M.offers.length)h+='<div class="desc">而家冇人搵你。</div>';
   M.offers.forEach(o=>{const T=MS_T[o.k];h+='<div class="mem"><div class="mem-h"><b>'+T.n+'</b><span class="tag">難度 '+'★'.repeat(o.g)+'</span><span class="desc">睇'+T.stat+(T.years>1?' · 做 '+T.years+' 年':'')+'</span></div><div class="desc">'+T.d(o.who)+'</div><div class="draw-acts"><button class="btn" type="button" data-a="msacc" data-ms="'+o.id+'">接</button><button class="btn" type="button" data-a="msrej" data-ms="'+o.id+'">推辭</button></div></div>';});
@@ -2056,9 +2059,10 @@ function showMissions(msg){
 }
 function msAction(a,b){
   const M=MSN();const id=b.dataset.ms;let t='';
-  if(a==='msacc'){const o=M.offers.find(x=>x.id===id);if(o){M.offers=M.offers.filter(x=>x!==o);M.active.push(o);t='接咗「'+MS_T[o.k].n+'」，記得派人。';}}
+  if(a==='msacc'){const o=M.offers.find(x=>x.id===id);if(o){M.offers=M.offers.filter(x=>x!==o);M.active.push(o);t='接咗「'+MS_T[o.k].n+'」：加人之後撳「確認出發」。';}}
   else if(a==='msrej'){M.offers=M.offers.filter(x=>x.id!==id);t='推辭咗。';}
   else if(a==='msdrop'){M.active=M.active.filter(x=>x.id!==id);FM().g=Math.max(0,FM().g-2);t='放棄咗任務，美名 −2。';}
+  else if(a==='msgo'){const x=M.active.find(y=>y.id===id);if(x&&x.team.length){x.go=1;const who=x.team.map(v=>v==='dl'?DL().name:(allDisc().find(m=>m.id===v)||{}).name).filter(Boolean).join('、');t='✓ '+who+'已經出發去做「'+MS_T[x.k].n+'」，年尾會有結果。';toast(t,3500);}}
   else if(a==='msout'){const x=M.active.find(y=>y.id===id);if(x)x.team=x.team.filter(v=>String(v)!==b.dataset.id);}
   persist();renderAll();showMissions(t);
 }
@@ -2678,7 +2682,7 @@ function onPopClick(e){
   if(a==='neckgo'){neckGo();return;}
   if(a==='job'){setJob(b.dataset.who,b.dataset.r);return;}
   if(a==='rkup'||a==='rkdn'){const t=a==='rkup'?rankUp(+b.dataset.id):rankDown(+b.dataset.id);showJobs(t);return;}
-  if(['msacc','msrej','msdrop','msout'].includes(a)){msAction(a,b);return;}
+  if(['msacc','msrej','msdrop','msout','msgo'].includes(a)){msAction(a,b);return;}
   if(a==='autojob'){const n=autoJobs();showJobs(n?'調配好，改咗 '+n+' 個人嘅工作。':'而家已經係最適合嘅安排。');return;}
   if(a==='teachv'){showTeach(b.dataset.who);return;}
   if(a==='teachb'){teachBook(b.dataset.who,b.dataset.b);return;}
