@@ -31,7 +31,7 @@
 | 中 | `#innerRow` | 六格（`renderInner()`）：`[data-cell=dl]` 道侶、`kid` 子女（`showKids()`）、`head` 親傳、`inner` 入室、`wai` 外門、`jm` 記名；手機只顯示名同人數 |
 | 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockRel`／`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
-| 大彈窗 | `#modal` | 分頁 `#mtBook #mtWx（武學，`renderWx()`） #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtRel #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
+| 主視窗 | `#modal` | 兩層導航：`#mSec` 六大區（`#ms_dan` `#ms_xiu` `#ms_ren` `#ms_zong` `#ms_chan` `#ms_ji`）、`#mSub` 子分頁（`#ml_<leaf>`）；`#mTitle #mBody`；秘咒 `#cheatIn` 只喺紀錄區顯示；訊息 `#mMsg` |
 | 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、記名管理 |
 | 提示 | `#toast` | `toast(msg, ms)` |
 
@@ -91,7 +91,7 @@
 | 疊層卡 | `openOverlay() showPill() showOutcome() useOne()` |
 | 食丹 | `effects(p, realm)`、`eat() test() testBy() testByMortal()` |
 | 生死 | `checkLife() endLife() showDeath()`、轉世 |
-| 彈窗 | `renderModal() openTab()`、`cheat()` |
+| 導航 | `SECS`（區同子分頁 leaf）、`mTab`＝而家 leaf、`secLast` 記住每區上次分頁、`TAB_ALIAS`（舊名 shop→mkt、rel→people、codex→book）、`drawNav() renderModal() openTab(leaf)`；`#mBody` click 按 leaf 分派（people→`onPopClick`、car/sect/pr→`onCareerClick`、book/wx→`onBookClick`、產業→`onBookClick`+`onRoomClick`）；人物中心 `hubPop()` 直接畫入主視窗 |
 
 ### 核心流程
 
@@ -158,7 +158,7 @@ pip install playwright --break-system-packages && python -m playwright install c
 python tests/smoke.py
 ```
 
-- `tests/smoke.py` 會檢查：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
+- `tests/smoke.py` 會檢查（導航用 `#ms_<區>`、`#ml_<leaf>`）：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
 - 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣 江湖告急`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：

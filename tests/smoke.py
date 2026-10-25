@@ -45,27 +45,30 @@ with sync_playwright() as p:
         pg.fill('#cheatIn', code); pg.click('#cheatGo')
     stones = pg.inner_text('#stats')
     check('金丹' in stones, '丹道通神 → 金丹期')
-    pg.click('#mtCar')
-    check(not pg.is_visible('#cheatIn'), '丹途門派分頁冇秘咒欄')
-    pg.click('#mtAch')
+    pg.click('#ms_zong')
+    check(not pg.is_visible('#cheatIn'), '紀錄以外嘅分區冇秘咒欄')
 
-    # 彈窗分頁大細一致
-    boxes = set()
-    for t in ['mtBook', 'mtWx', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtCar']:
-        pg.click('#' + t)
-        boxes.add(pg.eval_on_selector('#modal>.mbox', 'e=>{const r=e.getBoundingClientRect();return [r.top,r.height,r.width].map(Math.round).join(",")}'))
-    check(len(boxes) == 1, f'彈窗分頁大細一致 {boxes}')
+    # 六大分區、每個子分頁，主視窗大細一致
+    boxes = set(); leaves = 0
+    for sec in ['dan', 'xiu', 'ren', 'zong', 'chan', 'ji']:
+        pg.click('#ms_' + sec); pg.wait_for_timeout(20)
+        subs = pg.eval_on_selector_all('#mSub [data-leaf]', 'es=>es.map(e=>e.dataset.leaf)') or [None]
+        for leaf in subs:
+            if leaf: pg.click('#ml_' + leaf); pg.wait_for_timeout(20)
+            leaves += 1
+            boxes.add(pg.eval_on_selector('#modal>.mbox', 'e=>{const r=e.getBoundingClientRect();return [r.top,r.height,r.width].map(Math.round).join(",")}'))
+    check(len(boxes) == 1 and leaves >= 13, f'六大分區 {leaves} 個分頁大細一致 {boxes}')
     pg.click('#mClose')
 
-    # 人物中心
+    # 人物中心喺主視窗入面
     pg.click('#dockRel'); pg.wait_for_timeout(50)
-    check(pg.locator('.hub-tabs .dtab').count() == 13, '人物中心有 13 個分頁')
-    pg.click('#popClose')
+    check(pg.locator('.hub-tabs .dtab').count() == 13 and pg.is_visible('#modal'), '人物中心喺主視窗，有 13 個分頁')
+    pg.click('#mClose')
 
     # 左上角撳自己
     pg.click('#meBtn'); pg.wait_for_timeout(50)
-    check(pg.is_visible('.me-svg'), '撳左上角境界開到自己人物狀態')
-    pg.click('#popClose')
+    check(pg.is_visible('.me-svg'), '撳左上角境界開到修行「自己」')
+    pg.click('#mClose')
 
     # 打坐
     pg.click('#med'); pg.wait_for_timeout(50)
