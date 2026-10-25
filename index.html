@@ -3272,12 +3272,14 @@ function applyRecipe(name){
 function masteryN(c){return c>=10?'爐火純青':c>=6?'精通':c>=3?'熟手':c>=1?'初識':'生疏';}
 function masteryBonus(c){return{q:Math.min(c*1.5,15),s:Math.min(c*3,24)};}
 /* 煉成後自動記錄 */
+// 舊存檔有啲丹方冇記品級（顯示 undefined）：按配方重新推算
+function fixRecipeG(){let ch=0;Object.entries(recipes()).forEach(([n,e])=>{if(GRADES[e.g]!==undefined)return;let g=1;try{const pv=previewRecipe(e.cfg);if(pv&&GRADES[pv.g]!==undefined)g=pv.g;}catch(x){}e.g=g;ch=1;});if(ch)persist();}
 function recordBrew(p){
   if(FAIL_KINDS.includes(p.kind))return[];
   const msgs=[];const M=mastery();M[p.name]=(M[p.name]||0)+1;
   const R=recipes();const snap={path:cfg.path,art:cfg.art,fire:cfg.fire,furn:cfg.furn,heat:cfg.heat,order:cfg.order.slice()};
   if(!R[p.name]){R[p.name]={cfg:snap,src:'自創',g:p.grade};msgs.push('「'+p.name+'」嘅配方已記入丹書');}
-  else if(p.grade>R[p.name].g){R[p.name]={cfg:snap,src:'自創',g:p.grade};msgs.push('丹書更新咗「'+p.name+'」更好嘅配方');}
+  else if(GRADES[R[p.name].g]===undefined||p.grade>R[p.name].g){R[p.name]={cfg:snap,src:'自創',g:p.grade};msgs.push('丹書更新咗「'+p.name+'」更好嘅配方');}
   const c=M[p.name];if([1,3,6,10].includes(c))msgs.push('「'+p.name+'」熟練度：'+masteryN(c));
   return msgs;
 }
@@ -4384,7 +4386,7 @@ $('tFa').onclick=()=>setTab('fa');$('tHuo').onclick=()=>setTab('huo');$('tShelf'
 setTab('shelf');
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,ms||2600);}
 
-ensureStart();fixKidSur();bioTrack();fixCfg();resize();renderAll();
+ensureStart();fixKidSur();fixRecipeG();bioTrack();fixCfg();resize();renderAll();
 if(!P().alive&&save.dead)showDeath();else if(!P().alive)P().alive=true;
 if(P().alive&&P().born===false)showBirth();
 requestAnimationFrame(loop);
