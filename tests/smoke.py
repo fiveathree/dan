@@ -1,6 +1,6 @@
 """九轉丹房 煙霧測試：python tests/smoke.py
 
-檢查：冇 JS 錯誤、電腦同手機一屏過、彈窗分頁大細一致、開爐出丹、秘咒。
+檢查：冇 JS 錯誤、電腦同手機一屏過、投胎、彈窗分頁大細一致、開爐出丹、秘咒。
 """
 import pathlib, sys
 from playwright.sync_api import sync_playwright
@@ -34,12 +34,20 @@ with sync_playwright() as p:
     pg.add_init_script(FAST)
     pg.goto(URL); pg.wait_for_timeout(300)
 
+    # 投胎：新存檔一開就要揀資質同出身
+    check(pg.is_visible('#bGo'), '新存檔彈出投胎揀資質出身')
+    pg.click('[data-bid=yaonong]'); pg.click('#bGo')
+    check(not pg.is_visible('#bGo') and '道德' in pg.inner_text('#stats'), '入世之後有道德狀態')
+
     # 秘咒
     pg.click('#openAch')
     for code in ['點石成金', '急急如律令', '丹道通神']:
         pg.fill('#cheatIn', code); pg.click('#cheatGo')
     stones = pg.inner_text('#stats')
     check('金丹' in stones, '丹道通神 → 金丹期')
+    pg.click('#mtCar')
+    check(not pg.is_visible('#cheatIn'), '丹途門派分頁冇秘咒欄')
+    pg.click('#mtAch')
 
     # 彈窗分頁大細一致
     boxes = set()

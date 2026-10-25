@@ -52,7 +52,13 @@
 | 人物關係圖 | `relNodes() renderRel() onRelClick()`，SVG |
 | 解鎖與成就 | `START`（開局解鎖）、`ACHS`（成就，`u` 欄係解鎖項目）、`checkAch()` |
 | 存檔 | `newPlayer() newSave() persist()`、舊等級換算（`gver`） |
-| 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()` |
+| 道德 | `moral() addMoral(n)`（回傳「，道德 ±n」字串，直接接落訊息）、`stance()` zheng／fan／wu、`wanted()`（≤ −50 通緝）、`moralTick()`、`fightWin(base, lv)` 打架勝算 |
+| 投胎 | `IDS` 出身、`P_APT` 玩家資質倍數同代價、`showBirth() applyBirth()`、`ready()`（未投胎、煉緊、死咗都唔准郁）、`cultMul()` |
+| 後代 | `KIDS() newKid(dl) showKid() kidAction() inherit(id)` |
+| 武學 | `mfx()` 匯總藏書 `mx`：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox |
+| 委託 | `ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
+| 宗門階級 | `RANKS RANK_GX STIPEND UPKEEP`、`newSectTask() taskReady(t,ex) submitTask(ex) rankUps() sectTick()`（每年：月俸、俸祿、任務過期、大比、挖角）、`switchSect()`、自創宗門 `STASK() ownTaskTick() rankOf(m) promoGate(m)`、`renderSectTasks()`；大比／挖角係 `HOME_EV` 入面 `w:0` 嘅事件，用 `queueEv(k)` 排 |
+| 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()`；`askConfirm(問, 說明, 確定動作, id, 返轉頭動作)` 唔可以返轉頭嘅動作先彈窗問 |
 | 丹價行情 | `prices()` 行情指數、`retailPrice()`、`makeShopPill()` |
 | 丹室、丹瓶、儲物袋 | `DR()`、`ROOM_LV BOTTLES BAGS`、`storePill() roomDecay() bagAdd()`、`renderRoom() renderMarket() renderStock()` |
 | 丹市 | `basePrice() satMult() quoteN() doSell(n,auto,quiet)`、黑市事件 |
@@ -81,6 +87,7 @@
   ```
 
 - **時間**：用 `P().age += 1` 代表過一年，之後叫 `afterAction()`。每年要做嘅嘢放喺 `yearTick()` 個 while 迴圈入面（用 `pl.ly` 計過咗幾多年）。
+- **修為**：正數修為一律經 `gainCult()`（已乘 `cultMul()`＝資質×內功）；食丹喺 `eat()` 另外乘。
 - **加成**：所有弟子、門派、道侶、牢房嘅加成都匯總喺 `team()`，回傳 `{q, stab, disc, inc, pres, helpers, wild}`。藏書加成係 `bookFx()`，熟練度喺 `analyse()` 入面計。
 - **加修為**：一律用 `gainCult(n)`（內部叫 `breakthrough()`），唔好自己寫 `while(cult>=100)` 迴圈。境界最高自動去到 `TOP`（渡劫），飛升要經 `showAscend()` 將 `realm` 設做 9。
 - **家中奇遇**：`yearTick` 入隊，`flushEvents` 會等 `#ov`、`#pop`、`#modal` 全部閂咗先彈出。新增事件加入 `HOME_EV`。
@@ -102,16 +109,21 @@ save = {
     realm /* 0 煉氣…8 渡劫、9 飛升 */, cult, tox, demon, age, lifeBonus, stones, alive,
     master: {name, sect, realm, aff, since, left}|null, npcs: [{id, key?, name, rel, note, aff, since, lv?}], evq: [家中奇遇 key],
     car: {skill, sxp, cert, aff /* null|xie|sect|own */, sect, sectName, lvl, pres,
+          rank /* 0-4 */, gx /* 功勞 */, fail, task: {kind, g, n, left}, dabi, stasks: [{kind, who, last}],
           members: [記名], inner: [入室], cands: [招募候選], visitors: [慕名求見], pity, head, nid},
     mo: {on, infamy, prisoners, caught, killed, last, nid},
     dl: 道侶|null, bag: {藥材id: 數量}, dr: {lvl, stacks, bottle, bagLv},
-    n: {每世計數}, bio: [{a, t}], bt: {bioTrack 上次狀態}, ly: 上次 yearTick 年歲
+    n: {每世計數}, bio: [{a, t}], bt: {bioTrack 上次狀態}, ly: 上次 yearTick 年歲,
+    born /* false＝未揀資質出身 */, apt /* 0-4 */, id /* IDS key */, moral /* −100..100 */,
+    kids: [{id, name, f, apt, age, sk, par}], orders: [{id, who, name, g, need, fair, wait, cfg, special}],
+    unl: [上山搵藥解鎖嘅藥材id], npcs: [{…, mo /* 魔道中人 */, dk /* 道侶種類 */, vis /* 拜訪次數 */}]
   }
 }
 ```
 
+- 舊存檔冇 `born`：載入時當佢係中等資質散修（`born:true, apt:1, id:'sanxiu'`）。新一世 `newPlayer()` 係 `born:false`，啟動時會彈 `showBirth()`。
 - 唔好隨便改存檔 key。要改格式就加遷移（參考 `gver` 嘅等級換算），因為用戶部機有舊存檔。
-- 弟子物件：`{id, name, f, pers, skill, xp, realm, role, loy, gifts, fame?, apt?, age?, cult?, hao?}`；入室弟子一定有 `apt`、`age`、`cult`。
+- 弟子物件：`{id, name, f, pers, skill, xp, realm, role, loy, gifts, fame?, apt?, age?, cult?, hao?, rk? /* 記名弟子階級 0-2 */, gx? /* 功勞 */}`；入室弟子一定有 `apt`、`age`、`cult`。
 
 ## 設計
 
@@ -128,7 +140,8 @@ pip install playwright --break-system-packages && python -m playwright install c
 python tests/smoke.py
 ```
 
-- `tests/smoke.py` 會檢查：冇 JS 錯誤；電腦同手機一屏過；所有彈窗分頁大細一樣；可以開爐出丹；四句秘咒有效。
+- `tests/smoke.py` 會檢查：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
+- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 拜入山門 宗門大比 五年大比 有人挖角`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：
 
