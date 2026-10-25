@@ -51,11 +51,16 @@ with sync_playwright() as p:
 
     # 彈窗分頁大細一致
     boxes = set()
-    for t in ['mtBook', 'mtWx', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtRel', 'mtCar']:
+    for t in ['mtBook', 'mtWx', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtCar']:
         pg.click('#' + t)
         boxes.add(pg.eval_on_selector('#modal>.mbox', 'e=>{const r=e.getBoundingClientRect();return [r.top,r.height,r.width].map(Math.round).join(",")}'))
-    check(len(boxes) == 1, f'彈窗九個分頁大細一致 {boxes}')
+    check(len(boxes) == 1, f'彈窗分頁大細一致 {boxes}')
     pg.click('#mClose')
+
+    # 人物中心
+    pg.click('#dockRel'); pg.wait_for_timeout(50)
+    check(pg.locator('.hub-tabs .dtab').count() == 12, '人物中心有 12 個身份分頁')
+    pg.click('#popClose')
 
     # 左上角撳自己
     pg.click('#meBtn'); pg.wait_for_timeout(50)

@@ -317,7 +317,23 @@ canvas{display:block;width:100%;height:100%}
 .dz-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:transparent}
 .dz-bar i{display:block;height:100%;background:var(--jade)}
 .pbox{max-width:440px}
-.pbox.wide{max-width:min(920px,96vw)}
+.pbox.wide{max-width:min(940px,96vw);width:100%}
+.hub-tabs{display:flex;flex-wrap:wrap;gap:4px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.hub-tabs .dtab{padding:3px 10px}
+.hub-tabs .dtab small{margin-left:3px;color:var(--bronze)}
+.hub-tabs .dtab.zero{opacity:.55}
+.hub-grid{display:grid;grid-template-columns:190px minmax(0,1fr);gap:12px;align-items:start;margin-top:8px}
+.hub-list{display:flex;flex-direction:column;gap:4px;max-height:58vh;overflow:auto}
+.hub-p{display:flex;gap:6px;align-items:center;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);text-align:left;min-width:0}
+.hub-p.on{border-color:var(--bronze);background:rgba(201,161,90,.15)}
+.hub-p .dz-av.sm{width:26px;height:26px;font-size:14px;margin:0;flex:none}
+.hub-tx{display:flex;flex-direction:column;min-width:0}
+.hub-tx b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-tx small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-d{min-width:0;margin-top:6px}
+.job-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line)}
+.job-who{display:flex;flex-direction:column;min-width:0}.job-who small{font-size:11px;color:var(--muted)}
+@media (max-width:700px){.hub-grid{grid-template-columns:1fr}.hub-list{flex-direction:row;overflow-x:auto;max-height:none}.hub-p{flex:none}.job-row{grid-template-columns:1fr}}
 .dtabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;border-bottom:1px solid var(--line);scrollbar-width:thin}
 .dtab{flex:none;display:flex;align-items:center;gap:5px;padding:3px 9px 3px 4px;border:1px solid var(--line);border-radius:16px;background:var(--panel2);white-space:nowrap;font-size:12.5px}
 .dtab .dz-av.sm{width:22px;height:22px;font-size:13px;margin:0}
@@ -716,19 +732,19 @@ function kidMood(a){return a>=80?'好黐你':a>=50?'親近':a>=25?'有啲疏離'
 function showKid(id,msg){
   const k=KIDS().find(x=>x.id===id);if(!k)return;const A=APT[k.apt];const a=kAff(k);const pl=P();
   const pills=DR().stacks.some(s=>!FAIL_KINDS.includes(s.kind));
-  pop('<div class="dz-head" style="--apt:'+A.c+'"><span class="dz-av big">'+k.name[0]+'</span><div><div class="pill-grade">'+(k.f?'女兒':'兒子')+'</div><div class="pill-name">'+k.name+'</div></div></div>'+
+  hubPop('kid',k.id,'<div class="dz-head" style="--apt:'+A.c+'"><span class="dz-av big">'+k.name[0]+'</span><div><div class="pill-grade">'+(k.f?'女兒':'兒子')+'</div><div class="pill-name">'+k.name+'</div></div></div>'+
     '<dl class="dz-info"><dt>親情</dt><dd><span class="meter wide"><i style="width:'+a+'%;background:var(--cinnabar)"></i></span> '+Math.round(a)+'　'+kidMood(a)+'</dd>'+
     '<dt>年歲</dt><dd>'+k.age+' 歲</dd><dt>資質</dt><dd><span class="tag" style="border-color:'+A.c+';color:'+A.c+'">'+A.n+'</span></dd>'+(k.par?'<dt>出身</dt><dd>你同'+k.par+'所生</dd>':'')+
     '<dt>壽元</dt><dd>凡人之軀，大約 '+(LIFE[0]+APT[k.apt].life)+' 歲</dd><dt>家學</dt><dd>丹術'+SKILL_N[k.sk]+'</dd><dt>繼承</dt><dd>你百年之後，佢可以繼承你八成靈石、丹室、藥囊同人脈。</dd></dl>'+
+    '<div class="label">工作</div>'+jobChips('kid:'+k.id,KID_JOBS,kidJob(k),kidJobDis(k))+'<div class="desc">'+KID_JOBS[kidJob(k)].d+'</div>'+
     '<div class="label">照顧</div><div class="draw-acts">'+
-    '<button class="btn" type="button" data-a="jobs">安排工作（而家：'+KID_JOBS[kidJob(k)].n+'）</button>'+
     '<button class="btn" type="button" data-a="kplay" data-id="'+k.id+'">陪伴（耗一年）</button>'+
     '<button class="btn" type="button" data-a="kteach" data-id="'+k.id+'"'+(k.sk>=5?' disabled title="家學最多傳到五階"':'')+'>傳授家學（耗一年）</button>'+
     '<button class="btn" type="button" data-a="kmoney" data-id="'+k.id+'"'+(pl.stones<100?' disabled':'')+'>零用錢（100）</button>'+
     '<button class="btn" type="button" data-a="kschool" data-id="'+k.id+'"'+(k.school||pl.stones<500?' disabled title="'+(k.school?'已經讀過書院':'要 500 靈石')+'"':'')+'>送去書院（500）</button>'+
     '<button class="btn" type="button" data-a="kpill" data-id="'+k.id+'"'+(pills?'':' disabled title="丹室要有丹"')+'>餵靈丹</button></div>'+
     '<p class="desc">親情每年跌 2。親情 80 以上佢會孝敬你；跌到好低有機會離家出走。書院（一次）同上品以上靈丹有機會令資質升一級。</p>'+
-    '<div class="more-row">'+(DL()?'<button class="btn" type="button" data-a="kback">返道侶</button>':'')+'</div><div class="desc" id="popMsg">'+(msg||'')+'</div>');
+    '<div class="desc" id="popMsg">'+(msg||'')+'</div>');
 }
 function kidAction(a,id){
   const k=KIDS().find(x=>x.id===id);if(!k)return;const pl=P();kAff(k);let t='';
@@ -1252,7 +1268,7 @@ function MS(){return P().master||null;}
 function makeMaster(sect){const pl=P();return{name:MASTER_NAMES[Math.floor(rnd()*MASTER_NAMES.length)],sect,realm:clamp(pl.realm+2+Math.floor(rnd()*2),2,TOP),aff:55,since:pl.age,left:false};}
 function showMaster(msg){
   const m=MS();if(!m)return;
-  pop('<div class="dz-head" style="--apt:var(--bronze)"><span class="dz-av big">'+m.name[0]+'</span><div><div class="pill-grade">'+(m.left?'恩師':'師傅')+' · '+SECTS[m.sect].n+'</div><div class="pill-name">'+m.name+'</div></div></div>'+
+  hubPop('ms','ms','<div class="dz-head" style="--apt:var(--bronze)"><span class="dz-av big">'+m.name[0]+'</span><div><div class="pill-grade">'+(m.left?'恩師':'師傅')+' · '+SECTS[m.sect].n+'</div><div class="pill-name">'+m.name+'</div></div></div>'+
     '<dl class="dz-info"><dt>境界</dt><dd>'+REALMS[m.realm]+'期</dd><dt>好感</dt><dd><span class="meter wide"><i style="width:'+m.aff+'%;background:var(--bronze)"></i></span> '+Math.round(m.aff)+'</dd>'+
     '<dt>拜師</dt><dd>你 '+m.since+' 歲嗰年</dd><dt>好處</dt><dd>'+(m.left?'出咗師，偶然會傳召你送嘢':'喺門派煉丹時坐鎮，丹爐穩定 +4')+'</dd></dl>'+
     '<div class="draw-acts"><button class="btn" type="button" data-a="msask">請教丹道（耗一年）</button><button class="btn" type="button" data-a="msgift"'+(P().stones<200?' disabled':'')+'>孝敬（200 靈石）</button>'+
@@ -1289,7 +1305,7 @@ function showNPC(id,msg){
   }
   if(bad)acts='<button class="btn" type="button" data-a="nmake" data-id="'+id+'"'+(P().stones<400?' disabled':'')+'>賠禮化解（400 靈石）</button><button class="btn danger" type="button" data-a="nfight" data-id="'+id+'">主動討伐</button>';
   if(n.rel==='dui')acts='<button class="btn" type="button" data-a="nduel" data-id="'+id+'">約佢比試煉丹</button>';
-  pop('<div class="dz-head" style="--apt:'+(bad?'var(--cinnabar)':'var(--jade)')+'"><span class="dz-av big">'+n.name[0]+'</span><div><div class="pill-grade">'+REL_N[n.rel]+'</div><div class="pill-name">'+n.name+'</div></div></div>'+
+  hubPop('jh',id,'<div class="dz-head" style="--apt:'+(bad?'var(--cinnabar)':'var(--jade)')+'"><span class="dz-av big">'+n.name[0]+'</span><div><div class="pill-grade">'+REL_N[n.rel]+'</div><div class="pill-name">'+n.name+'</div></div></div>'+
     '<dl class="dz-info"><dt>因由</dt><dd>'+n.note+'</dd><dt>相識</dt><dd>你 '+n.since+' 歲嗰年</dd><dt>'+(bad?'恨意':'好感')+'</dt><dd>'+Math.round(bad?100-n.aff:n.aff)+'</dd></dl>'+
     (isMoNPC(n)&&!bad?'<p class="desc bad">佢係魔道中人，同佢來往會加心魔。</p>':'')+
     ((n.rel==='you'||n.rel==='qdl')&&vis<3?'<p class="desc">再拜訪 '+(3-vis)+' 次，就可以揀結為道侶、論道或者殺佢。</p>':'')+
@@ -1865,22 +1881,24 @@ function jobTick(){
     else if(j==='ying'&&big){const v=30+Math.floor(rnd()*31);pl.stones+=v;log('子女',k.name+'打理丹室，賺咗 '+v+' 靈石');}
     else if(j==='wan')k.aff=Math.min(100,kAff(k)+4);});
 }
+function jobChips(who,map,cur,dis){return'<div class="chips">'+Object.entries(map).map(([k,o])=>'<button class="chip" type="button" data-a="job" data-who="'+who+'" data-r="'+k+'" aria-pressed="'+(cur===k)+'" title="'+o.d+'"'+(dis&&dis(k)?' disabled':'')+'>'+o.n+'</button>').join('')+'</div>';}
+function kidJobDis(k){return r=>k.age<10&&(r==='cai'||r==='ying');}
 function showJobs(msg){
-  const d=DL();const K=KIDS();const D=allDisc();
-  const chips=(who,map,cur,dis)=>'<div class="chips">'+Object.entries(map).map(([k,o])=>'<button class="chip" type="button" data-a="job" data-who="'+who+'" data-r="'+k+'" aria-pressed="'+(cur===k)+'" title="'+o.d+'"'+(dis&&dis(k)?' disabled':'')+'>'+o.n+'</button>').join('')+'</div>';
-  let h='<div class="pill-grade">安排工作</div>';
+  const d=DL();const K=KIDS();const D=discOrder();
+  const row=(name,sub,chips)=>'<div class="job-row"><div class="job-who"><b>'+name+'</b><small>'+sub+'</small></div>'+chips+'</div>';
+  let h='<div class="pill-name" style="font-size:22px">安排工作</div>';
   if(!d&&!K.length&&!D.length)h+='<p>未有人可以安排。有道侶、子女或者弟子之後先可以分派工作。</p>';
-  if(d)h+='<div class="label">道侶</div><div class="mem"><div class="mem-h"><b>'+d.name+'</b><span class="desc">'+DL_JOBS[dlJob()].d+'</span></div>'+chips('dl',DL_JOBS,dlJob())+'</div>';
-  if(K.length){h+='<div class="label">子女</div>';K.forEach(k=>{h+='<div class="mem"><div class="mem-h"><b>'+k.name+'</b><span class="desc">'+k.age+' 歲 · '+KID_JOBS[kidJob(k)].d+'</span></div>'+chips('kid:'+k.id,KID_JOBS,kidJob(k),r=>k.age<10&&(r==='cai'||r==='ying'))+'</div>';});}
-  if(D.length){h+='<div class="label">弟子</div>';D.forEach(m=>{h+='<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="desc">'+RANKS[rankOf(m)]+' · '+ROLES[m.role].d+'</span></div>'+chips('d:'+m.id,ROLES,m.role)+'</div>';});}
+  if(d)h+='<div class="label">道侶</div>'+row(d.name,DL_JOBS[dlJob()].d,jobChips('dl',DL_JOBS,dlJob()));
+  if(K.length){h+='<div class="label">子女</div>';K.forEach(k=>{h+=row(k.name,k.age+' 歲 · '+KID_JOBS[kidJob(k)].d,jobChips('kid:'+k.id,KID_JOBS,kidJob(k),kidJobDis(k)));});}
+  if(D.length){h+='<div class="label">弟子</div>';D.forEach(m=>{h+=row(m.name,RANKS[rankOf(m)]+' · '+ROLES[m.role].d,jobChips('d:'+m.id,ROLES,m.role));});}
   h+='<p class="desc">工作每年結算，結果喺爐火紀錄一行字帶過。撳掣上面停一停可以睇效果。</p><div class="desc" id="popMsg">'+(msg||'')+'</div>';
-  pop(h);
+  hubPop('job',null,h);
 }
 function setJob(who,r){
   if(who==='dl'){const d=DL();if(d)d.job=r;}
   else if(who.startsWith('kid:')){const k=KIDS().find(x=>x.id===who.slice(4));if(k)k.job=r;}
   else{const m=allDisc().find(x=>x.id===+who.slice(2));if(m)m.role=r;}
-  persist();renderAll();showJobs();
+  persist();renderAll();if(hubCat==='job')showJobs();else hubShow(hubCat,hubSel);
 }
 function takeDL(d,how){
   P().dl=d;save.st.dl=(save.st.dl||0)+1;if(d.kind==='mo')save.st.dlMo=1;
@@ -1897,13 +1915,14 @@ function dlTick(msgs){
 }
 function showDL(){
   const d=DL();if(!d)return;const K=DL_KIND[d.kind];
-  pop('<div class="dz-head" style="--apt:'+(d.kind==='mo'?'var(--cinnabar)':'var(--jade)')+'"><span class="dz-av big">'+d.name[0]+'</span><div><div class="pill-grade">道侶 · '+K.n+'</div><div class="pill-name">'+d.name+'</div></div></div>'+
+  hubPop('dl','dl','<div class="dz-head" style="--apt:'+(d.kind==='mo'?'var(--cinnabar)':'var(--jade)')+'"><span class="dz-av big">'+d.name[0]+'</span><div><div class="pill-grade">道侶 · '+K.n+'</div><div class="pill-name">'+d.name+'</div></div></div>'+
     '<dl class="dz-info"><dt>好感</dt><dd><span class="meter wide"><i style="width:'+d.aff+'%;background:var(--cinnabar)"></i></span> '+Math.round(d.aff)+'　'+(d.aff>=80?'情深似海':d.aff>=50?'兩情相悅':d.aff>=20?'有啲冷淡':'貌合神離')+'</dd>'+
     '<dt>境界</dt><dd>'+REALMS[d.realm]+'期</dd><dt>性格</dt><dd>'+PERS[d.pers].n+'</dd><dt>年歲</dt><dd>'+d.age+' 歲</dd>'+
     '<dt>相識</dt><dd>你 '+d.since+' 歲嗰年</dd><dt>好處</dt><dd>每年一齊修煉，修為自動 +'+(d.aff>=50?3:1)+'%；好感 50 以上：'+K.d+'</dd></dl>'+
     '<p class="desc">好感每年自然跌 1；低過 20 有機會離你而去。送丹（出丹時撳「送畀道侶」）、送禮、雙修都可以加好感。</p>'+
-    (KIDS().length?'<div class="label">子女（'+KIDS().length+'）<em>撳入去照顧</em></div><div class="testers">'+KIDS().map(k=>'<button class="btn tester" type="button" data-a="kview" data-id="'+k.id+'"><b>'+k.name+'（'+(k.f?'女':'子')+'）</b><small>'+k.age+' 歲 · '+APT[k.apt].n+' · 親情 '+Math.round(kAff(k))+' '+kidMood(kAff(k))+'</small></button>').join('')+'</div>':'')+
-    '<div class="draw-acts"><button class="btn" type="button" data-a="dlsx">雙修一年</button><button class="btn" type="button" data-a="jobs">安排工作（而家：'+DL_JOBS[dlJob()].n+'）</button><button class="btn" type="button" data-a="dlkid"'+(KIDS().length>=3?' disabled title="最多三個子女"':'')+' title="好感 50 以上機會大好多">求子（耗一年）</button><button class="btn" type="button" data-a="dlgift"'+(P().stones<200?' disabled':'')+'>送禮（200 靈石）</button><button class="btn danger" type="button" data-a="dlbye">分手</button></div><div class="desc" id="popMsg"></div>');
+    '<div class="label">工作</div>'+jobChips('dl',DL_JOBS,dlJob())+'<div class="desc">'+DL_JOBS[dlJob()].d+'</div>'+
+    (KIDS().length?'<div class="desc">子女 '+KIDS().length+' 個，喺上面「子女」照顧。</div>':'')+
+    '<div class="draw-acts"><button class="btn" type="button" data-a="dlsx">雙修一年</button><button class="btn" type="button" data-a="dlkid"'+(KIDS().length>=3?' disabled title="最多三個子女"':'')+' title="好感 50 以上機會大好多">求子（耗一年）</button><button class="btn" type="button" data-a="dlgift"'+(P().stones<200?' disabled':'')+'>送禮（200 靈石）</button><button class="btn danger" type="button" data-a="dlbye">分手</button></div><div class="desc" id="popMsg"></div>');
 }
 function dlAction(a,b){
   const d=DL();if(!d)return;const pl=P();
@@ -2263,51 +2282,98 @@ function renderInner(){
   x+=cell('jm','記名',c.members.length,capOf(),jm.length?jm[0].name[0]:'＋','',V.length?'<span class="visit">'+V.length+' 人慕名求見</span>':c.aff?(jm.length?jm.map(m=>m.name).join('、'):'招募記名弟子'):'加入丹會後可收');
   $('innerRow').innerHTML=x;
 }
-function showKids(){
-  const K=KIDS();
-  pop('<div class="pill-grade">子女 '+K.length+' / 3</div>'+(K.length?'<div class="testers">'+K.map(k=>'<button class="btn tester" type="button" data-a="kview" data-id="'+k.id+'"><b>'+k.name+'（'+(k.f?'女':'子')+'）</b><small>'+k.age+' 歲 · '+APT[k.apt].n+' · 親情 '+Math.round(kAff(k))+' '+kidMood(kAff(k))+'</small></button>').join('')+'</div>':'<p>未有子女。'+(DL()?'可以喺道侶彈窗撳「求子」。':'要先結識道侶，之後喺道侶彈窗撳「求子」。')+'</p>')+
-    '<p class="desc">撳子女可以陪伴、傳授家學、畀零用錢、送去書院、餵靈丹。你死嘅時候可以由子女繼承遺產。</p>');
+/* ---------- 人物中心：上面揀身份，左邊揀人，右邊睇詳情同工作 ---------- */
+const HUB=[['ov','總覽'],['job','工作'],['dl','道侶'],['kid','子女'],['ms','師傅'],['head','親傳'],['inner','入室'],['nei','內門'],['wai','外門'],['jm','記名'],['jh','江湖'],['zm','招募']];
+let hubCat='ov',hubSel=null;
+function discCat(m){return isHead(m)?'head':isInner(m)?'inner':(m.rk||0)>=2?'nei':(m.rk||0)===1?'wai':'jm';}
+function hubPeople(cat){
+  const c=C();const dsub=m=>REALMS[m.realm]+' · '+ROLES[m.role].n+' · 忠誠 '+Math.round(loy(m));
+  const disc=L=>L.map(m=>({id:m.id,name:m.name,sub:dsub(m),col:m.apt!==undefined?APT[m.apt].c:'var(--line)'}));
+  if(cat==='dl'){const d=DL();return d?[{id:'dl',name:d.name,sub:DL_KIND[d.kind].n+' · 好感 '+Math.round(d.aff),col:d.kind==='mo'?'var(--cinnabar)':'var(--jade)'}]:[];}
+  if(cat==='kid')return KIDS().map(k=>({id:k.id,name:k.name,sub:k.age+' 歲 · 親情 '+Math.round(kAff(k)),col:APT[k.apt].c}));
+  if(cat==='ms'){const m=MS();return m?[{id:'ms',name:m.name,sub:(m.left?'恩師':'師傅')+' · 好感 '+Math.round(m.aff),col:'var(--bronze)'}]:[];}
+  if(cat==='head')return disc(headD()?[headD()]:[]);
+  if(cat==='inner')return disc(inner().filter(x=>!isHead(x)));
+  if(cat==='nei')return disc(c.members.filter(m=>(m.rk||0)>=2));
+  if(cat==='wai')return disc(c.members.filter(m=>(m.rk||0)===1));
+  if(cat==='jm')return disc(c.members.filter(m=>!(m.rk||0)));
+  if(cat==='jh')return NPCS().map(n=>{const bad=n.rel==='chou'||n.rel==='pan'||n.rel==='qms'||n.rel==='zi';return{id:n.id,name:n.name,sub:REL_N[n.rel],col:bad?'var(--cinnabar)':n.rel==='dui'?'var(--bronze)':'var(--jade)'};});
+  return[];
 }
-function showInnerList(){
-  const hd=headD();const L=inner().filter(x=>!isHead(x));const ic=innerCap();
-  let h='<div class="pill-grade">入室弟子 '+L.length+' / '+ic+'</div>';
-  if(hd)h+='<p class="desc">親傳弟子另外計：<button class="btn" type="button" data-a="idet" data-id="'+hd.id+'">'+hd.name+'（親傳）</button></p>';
-  if(!L.length)h+='<p class="desc">未有入室弟子。</p>';
-  h+='<div class="testers">'+L.map(d=>'<button class="btn tester" type="button" data-a="idet" data-id="'+d.id+'"><b>'+d.name+(d.hao?'「'+d.hao+'」':'')+(isHead(d)?'（親傳弟子）':'')+'</b><small><span style="color:'+APT[d.apt].c+'">'+APT[d.apt].n+'</span> · '+REALMS[d.realm]+' '+Math.floor(d.cult)+'% · '+ROLES[d.role].n+' · 忠誠 '+Math.round(loy(d))+' · '+d.age+'/'+innerLife(d)+' 歲</small></button>').join('')+'</div>';
-  h+='<div class="draw-acts"><button class="btn" type="button" data-a="drawpop"'+(canDraw()?'':' disabled')+'>收徒抽籤（'+DRAW_COST+' 靈石）</button></div>';
-  h+='<p class="desc">'+(C().aff==='own'?'門派等級越高，可收嘅入室弟子越多（而家「'+SECT_LV[C().lvl].n+'」上限 '+ic+'）。':'自創門派之後，門派聲望升級可以收更多入室弟子。')+(canDraw()?'':'要一品丹證先可以收徒。')+'</p><div class="desc" id="popMsg"></div>';
-  pop(h);
+function hubPop(cat,sel,detail){
+  hubCat=cat;hubSel=sel;
+  const tabs='<div class="hub-tabs" role="tablist">'+HUB.map(([k,n])=>{const cnt=k==='zm'?(C().visitors||[]).length:k==='ov'||k==='job'?'':hubPeople(k).length;
+    return'<button class="dtab'+(k===cat?' on':'')+(cnt===0?' zero':'')+'" type="button" role="tab" aria-selected="'+(k===cat)+'" data-a="hub" data-cat="'+k+'">'+n+(cnt!==''&&!(k==='zm'&&!cnt)?'<small>'+cnt+'</small>':'')+'</button>';}).join('')+'</div>';
+  const L=['ov','job','zm'].includes(cat)?[]:hubPeople(cat);
+  const list=L.length>1||(L.length&&!['dl','ms','head'].includes(cat))?'<div class="hub-list">'+L.map(q=>'<button type="button" class="hub-p'+(String(q.id)===String(sel)?' on':'')+'" data-a="hubp" data-cat="'+cat+'" data-id="'+q.id+'"><span class="dz-av sm" style="--apt:'+q.col+'">'+q.name[0]+'</span><span class="hub-tx"><b>'+q.name+'</b><small>'+q.sub+'</small></span></button>').join('')+'</div>':'';
+  pop(tabs+(list?'<div class="hub-grid">'+list+'<div class="hub-d">'+detail+'</div></div>':'<div class="hub-d">'+detail+'</div>'),true);
 }
+const HUB_EMPTY={
+  dl:'未有道侶。上山採藥、下山斬妖嘅奇遇有機會結識（救重傷女魔頭、溪邊邂逅仙子俠客），知己拜訪滿三次亦可以結為道侶。',
+  kid:'未有子女。有道侶之後喺「道侶」撳「求子」。',
+  ms:'未有師傅。喺丹途門派拜入門派就會拜師。',
+  head:'未有親傳弟子。喺「入室」揀一個弟子，撳「選為親傳弟子」。',
+  inner:'未有入室弟子。去「招募」收徒抽籤，或者將記名弟子升上嚟（要一品丹證）。',
+  nei:'未有內門弟子。自創宗門之後，記名弟子做宗門任務攞夠功勞會升外門、內門。',
+  wai:'未有外門弟子。自創宗門之後，記名弟子做宗門任務攞夠功勞會升外門。',
+  jm:'未有記名弟子。去「招募」收人。',
+  jh:'未有江湖朋友或者仇人。出行奇遇會結識知己、對手、仇人。'};
+function hubShow(cat,id){
+  cat=cat||'ov';
+  if(cat==='ov')return hubPop('ov',null,orgHtml());
+  if(cat==='job')return showJobs();
+  if(cat==='zm')return showJiming();
+  const L=hubPeople(cat);
+  if(!L.length)return hubPop(cat,null,'<p class="desc" style="margin-top:12px">'+HUB_EMPTY[cat]+'</p>'+(cat==='inner'||cat==='jm'?'<div class="draw-acts"><button class="btn" type="button" data-a="hub" data-cat="zm">去招募</button></div>':''));
+  if(id===undefined||id===null||!L.some(q=>String(q.id)===String(id)))id=L[0].id;
+  if(cat==='dl')return showDL();
+  if(cat==='kid')return showKid(id);
+  if(cat==='ms')return showMaster();
+  if(cat==='jh')return showNPC(id);
+  return showDisciple(+id);
+}
+function openHub(cat,id){$('modal').hidden=true;hubShow(cat,id);}
+function orgHtml(){
+  const pl=P();const G=relGroups();
+  const node=(r,cls)=>'<button type="button" class="org-n'+(cls?' '+cls:'')+'" data-a="hubk" data-k="'+r.k+'"><span class="rl-av" style="--c:'+r.col+'">'+r.name[0]+'</span><span class="org-tx"><b>'+r.name+'</b><small>'+r.rel+'</small><span class="rl-bar"><i style="width:'+r.v+'%;background:'+r.col+'"></i></span></span></button>';
+  const pick=pre=>G.fam.concat(G.sect).filter(r=>r.k.startsWith(pre));const byRel=rel=>G.sect.filter(r=>r.rel===rel);
+  const row=(t,L)=>L.length?'<div class="org-row'+(L.length>1?' multi':'')+'"><div class="org-lab">'+t+'（'+L.length+'）</div>'+L.map(r=>node(r)).join('')+'</div>':'';
+  const me={k:'me',name:'你',rel:realmName(pl.realm,pl.cult),v:pl.cult,col:'var(--bronze)'};
+  const top=[...pick('ms'),me,...pick('dl')];
+  let h='<div class="org">'+'<div class="org-row top">'+top.map(r=>node(r,r.k==='me'?'me':'')).join('<span class="org-link" aria-hidden="true"></span>')+'</div>'+
+    row('子女',pick('kid:'))+row('親傳弟子',byRel('親傳弟子'))+row('入室弟子',byRel('入室弟子'))+row('內門弟子',byRel('內門弟子'))+row('外門弟子',byRel('外門弟子'))+row('記名弟子',byRel('記名弟子'))+'</div>';
+  const fr=G.fr.length+G.foe.length;
+  h+='<p class="desc">撳人物去佢嘅頁面'+(fr?'；江湖上仲有 '+G.fr.length+' 個朋友、'+G.foe.length+' 個仇敵（睇「江湖」）':'')+'。上面揀身份，「工作」一頁過幫所有人分工。</p>';
+  return h;
+}
+function hubKey(k){
+  if(k==='me'){closePop();showMe();return;}
+  if(k==='dl')return hubShow('dl');if(k==='ms')return hubShow('ms');if(k==='pr'){closePop();openTab('car');return;}
+  const [t,id]=k.split(':');
+  if(t==='kid')return hubShow('kid',id);if(t==='np')return hubShow('jh',id);
+  const m=allDisc().find(x=>x.id===+id);if(m)return hubShow(discCat(m),m.id);
+}
+function showKids(){hubShow('kid');}
+function showInnerList(){hubShow('inner');}
+function showDLCell(){hubShow('dl');}
 function showJiming(msg){
-  const c=C();const mc=capOf();
-  let h='<div class="pill-grade">記名弟子 '+c.members.length+' / '+mc+'</div>';
-  const V=c.visitors||[];
+  const c=C();const mc=capOf();const V=c.visitors||[];
+  let h='<div class="pill-name" style="font-size:22px">招募</div><div class="desc">記名 '+c.members.length+' / '+mc+'　入室 '+innerN()+' / '+innerCap()+(headD()?'　親傳 1':'')+'</div>';
+  h+='<div class="label">收入室弟子</div><div class="draw-acts"><button class="btn" type="button" data-a="drawpop"'+(canDraw()?'':' disabled title="要一品丹證"')+'>收徒抽籤（'+DRAW_COST+' 靈石）</button></div>';
   if(V.length){
     h+='<div class="label">慕名求見（'+V.length+'）<em>佢哋最多等三年</em></div><div class="mems">';
     V.forEach(v=>{const A=APT[v.apt];
       h+='<div class="mem visitor"><div class="mem-h"><b>'+v.name+'</b><span class="tag" style="border-color:'+A.c+';color:'+A.c+'">資質 '+A.n+'</span><span class="tag">'+PERS[v.pers].n+'</span><span class="desc">'+REALMS[v.realm]+' · 丹術'+SKILL_N[v.skill]+' · 仲等 '+v.wait+' 年</span></div>'+
-        '<div class="desc">'+PERS[v.pers].d+'。慕你之名而嚟，忠誠 '+v.loy+'。</div><div class="draw-acts">'+
-        '<button class="btn" type="button" data-a="vacc" data-id="'+v.id+'"'+(c.members.length>=mc?' disabled title="記名弟子已滿"':'')+'>收做記名弟子</button>'+
-        '<button class="btn" type="button" data-a="vinn" data-id="'+v.id+'"'+(!canDraw()||innerN()>=innerCap()?' disabled title="要一品丹證同入室有空位"':'')+'>收做入室弟子</button>'+
+        '<div class="draw-acts"><button class="btn" type="button" data-a="vacc" data-id="'+v.id+'"'+(c.members.length>=mc?' disabled title="記名弟子已滿"':'')+'>收做記名</button>'+
+        '<button class="btn" type="button" data-a="vinn" data-id="'+v.id+'"'+(!canDraw()||innerN()>=innerCap()?' disabled title="要一品丹證同入室有空位"':'')+'>收做入室</button>'+
         '<button class="btn" type="button" data-a="vrej" data-id="'+v.id+'">婉拒</button></div></div>';});
-    h+='</div><div class="label">記名弟子</div>';
+    h+='</div>';
   }
-  if(!c.aff){pop(h+'<p>記名弟子要加入煉丹協會、門派或者自創門派之後先可以收。魔頭擄返嚟嘅凡人喺丹途分頁嘅奴隸營。</p>');return;}
-  h+='<div class="mems">';
-  if(!c.members.length)h+='<div class="desc">未有記名弟子。</div>';
-  c.members.forEach(m=>{
-    h+='<div class="mem"><div class="mem-h"><button class="linkb" type="button" data-a="idet" data-id="'+m.id+'"><b>'+m.name+'</b></button><span class="tag'+(m.rk?' good':'')+'" title="功勞 '+(m.gx||0)+'">'+RANKS[m.rk||0].slice(0,2)+'</span>'+(isZp(m)?'<span class="tag good" title="心性好，忠誠唔會隨時間跌">正派</span>':'')+(m.fame?'<span class="tag good">慕名</span>':'')+'<span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+'<button class="ib" type="button" data-a="jdis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button></div>'+
-      '<div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="jrole" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+
-      loyActs(m,'jm')+(canDraw()?'<button class="btn" type="button" data-a="jpromo" data-id="'+m.id+'"'+(promoGate(m)?' disabled title="'+promoGate(m)+'"':'')+'>升為入室弟子'+(innerN()>=innerCap()?'（要對調）':'')+'</button>':'')+'</div>';
-  });
-  h+='</div><div class="label" style="align-items:center">招募<button class="btn" type="button" data-a="jref" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
+  if(!c.aff){hubPop('zm',null,h+'<p class="desc">記名弟子要加入煉丹協會、門派或者自創門派之後先可以收。</p><div class="desc" id="popMsg">'+(msg||'')+'</div>');return;}
+  h+='<div class="label" style="align-items:center">招募記名弟子<button class="btn" type="button" data-a="jref" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
   c.cands.forEach(m=>{h+='<div class="mem cand"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span></div><button class="btn" type="button" data-a="jrec" data-id="'+m.id+'"'+(c.members.length>=mc||P().stones<m.cost?' disabled':'')+'>招募（'+m.cost+' 靈石）</button></div>';});
-  h+='</div><p class="desc">'+(c.aff==='own'?'門派聲望升級可以收更多記名弟子（而家「'+SECT_LV[c.lvl].n+'」上限 '+mc+'）。':'自創門派之後上限會大增。')+'有名氣之後，每年都有機會有人慕名而嚟。</p><div class="desc" id="popMsg">'+(msg||'')+'</div>';
-  pop(h);
-}
-function showDLCell(){
-  if(DL()){showDL();return;}
-  pop('<div class="pill-grade">道侶 0 / 1</div><p>未有道侶。上山採藥同下山斬妖嘅奇遇有機會結識：救重傷女魔頭，佢可能以身相許；或者喺溪邊邂逅仙子、俠客。</p><p class="desc">道侶每年同你雙修加修為，好感 50 以上仲會幫手煉丹。</p>');
+  h+='</div><p class="desc">名額睇門派等級同美名。有名氣之後每年都有機會有人慕名而嚟。</p><div class="desc" id="popMsg">'+(msg||'')+'</div>';
+  hubPop('zm',null,h);
 }
 function pop(html,wide){$('popBody').innerHTML=html;$('pop').querySelector('.mbox').classList.toggle('wide',!!wide);$('pop').hidden=false;}
 // 唔可以返轉頭嘅動作先問一句
@@ -2333,15 +2399,15 @@ function showDisciple(id,msg){
     '<dt>忠誠</dt><dd>'+loyTag(d)+' <span class="desc">'+(loy(d)<30?'心存不滿，效果減半':loy(d)>=80?'死心塌地，效果多一成':'安份守己')+'</span></dd>'+
     '<dt>心性</dt><dd>'+(isZp(d)?'<span class="tag good">正派</span> 忠誠唔會隨時間跌':'普通')+(isHead(d)?'；親傳地位高，忠誠唔會跌':'')+'</dd>'+
     (!inn?'<dt>功勞</dt><dd>'+(d.gx||0)+(c.aff==='own'&&(d.rk||0)<2?'（'+M_RANK_GX[d.rk||0]+' 升'+RANKS[(d.rk||0)+1]+'）':'')+'</dd>':'')+'</dl>';
-  const right='<div class="label">工作</div><div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="irole" data-id="'+d.id+'" data-r="'+k+'" aria-pressed="'+(d.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div><div class="desc">'+ROLES[d.role].d+'</div>'+
+  const right='<div class="label">工作</div>'+jobChips('d:'+d.id,ROLES,d.role)+'<div class="desc">'+ROLES[d.role].d+'</div>'+
     (isHead(d)?'<div class="car-act"><button class="btn" type="button" data-a="dai">'+(c.daiOn?'停止代煉':'交佢代煉丹')+'</button><span class="desc">每年用你爐上嘅丹方煉一爐，丹放入丹室。</span></div>':'')+
     '<div class="label">籠絡</div>'+loyActs(d,inn?'in':'dm')+
     '<div class="label">身份</div><div class="draw-acts">'+
     (inn?'<button class="btn" type="button" data-a="demote" data-id="'+d.id+'"'+(c.members.length>=capOf()?' disabled title="記名弟子已滿"':' title="降做記名：佢忠誠 −30，其他入室 −5"')+'>降為記名弟子</button><button class="btn danger" type="button" data-a="expel" data-id="'+d.id+'">逐出師門</button>'
       :(canDraw()?'<button class="btn" type="button" data-a="jpromo" data-id="'+d.id+'"'+(promoGate(d)?' disabled title="'+promoGate(d)+'"':'')+'>升為入室弟子'+(innerN()>=innerCap()?'（要對調）':'')+'</button>':'')+'<button class="btn danger" type="button" data-a="jdis" data-id="'+d.id+'">請佢落山</button>')+
-    '<button class="btn" type="button" data-a="drawpop">收徒抽籤</button><button class="btn" type="button" data-a="jmback">記名同招募</button></div>'+
+    '</div>'+
     '<div class="desc" id="popMsg">'+(msg||'')+'</div>';
-  pop(discTabs(id)+'<div class="dgrid"><div>'+left+'</div><div>'+right+'</div></div>',true);
+  hubPop(discCat(d),d.id,'<div class="dgrid"><div>'+left+'</div><div>'+right+'</div></div>'+'');
 }
 function showDraw(){
   const c=C();
@@ -2381,6 +2447,9 @@ function onPopClick(e){
   if(a==='neckgo'){neckGo();return;}
   if(a==='job'){setJob(b.dataset.who,b.dataset.r);return;}
   if(a==='jobs'){showJobs();return;}
+  if(a==='hub'){hubShow(b.dataset.cat);return;}
+  if(a==='hubp'){hubShow(b.dataset.cat,b.dataset.id);return;}
+  if(a==='hubk'){hubKey(b.dataset.k);return;}
   if(a==='mapsel'){mapSel=b.dataset.loc;showMap();return;}
   if(a==='owngo'){closePop();createSect(pendingSect,mapSel);return;}
   if(a==='rqok'||a==='rqno'){doReq(b.dataset.id,a==='rqok');return;}
@@ -2996,25 +3065,17 @@ function renderCareer(){
   h+=renderSectTasks();
   h+=renderPrison();
   if(c.aff){
-    const card=m=>{const mem=!isInner(m);return'<div class="mem"><div class="mem-h"><b>'+m.name+'</b><span class="tag'+(rankOf(m)?' good':'')+'" title="功勞 '+(m.gx||0)+'">'+RANKS[rankOf(m)].replace('弟子','')+'</span>'+(isZp(m)?'<span class="tag good">正派</span>':'')+'<span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span>'+loyTag(m)+(mem?'<button class="ib" type="button" data-a="dis" data-id="'+m.id+'" aria-label="請走'+m.name+'">✕</button>':'')+'</div>'+
-      '<div class="chips">'+Object.entries(ROLES).map(([k,o])=>'<button class="chip" type="button" data-a="role" data-id="'+m.id+'" data-r="'+k+'" aria-pressed="'+(m.role===k)+'" title="'+o.d+'">'+o.n+'</button>').join('')+'</div>'+
-      (mem&&canDraw()?'<button class="btn" type="button" data-a="promo" data-id="'+m.id+'"'+(promoGate(m)?' disabled title="'+promoGate(m)+'"':' title="升為入室弟子：佢忠誠 +20，其他記名弟子 −5"')+'>升為入室弟子'+(innerN()>=innerCap()?'（要同人對調）':'')+'</button>':'')+'</div>';};
-    const A=allDisc();
-    h+='<div class="label" style="margin-top:8px">弟子工作（'+A.length+' 人）<em>記名 '+c.members.length+' / '+capOf()+' · 入室 '+innerN()+' / '+innerCap()+(headD()?' · 親傳 1':'')+'；撳崗位即刻換工</em></div>';
-    if(!A.length)h+='<div class="desc">未有弟子，喺下面招募。</div>';
-    Object.entries(ROLES).forEach(([k,o])=>{const L=A.filter(m=>m.role===k);if(!L.length&&k==='idle')return;
-      h+='<div class="job-sec"><div class="job-h"><b>'+o.n+'</b><span class="tag">'+L.length+' 人</span><span class="desc">'+o.d+'</span></div><div class="mems">'+(L.length?L.map(card).join(''):'<div class="desc">冇人做緊。</div>')+'</div></div>';});
-    h+='</div><div class="label" style="margin-top:8px;align-items:center">招募<button class="btn" type="button" data-a="refresh" style="letter-spacing:0">換一批（20 靈石）</button></div><div class="mems">';
-    c.cands.forEach(m=>{
-      h+='<div class="mem cand"><div class="mem-h"><b>'+m.name+'</b><span class="tag">'+PERS[m.pers].n+'</span><span class="desc">'+REALMS[m.realm]+' · 丹術'+SKILL_N[m.skill]+'</span></div><div class="desc">'+PERS[m.pers].d+'</div><button class="btn" type="button" data-a="rec" data-id="'+m.id+'" '+(c.members.length>=capOf()?'disabled':'')+'>招募（'+m.cost+' 靈石）</button></div>';
-    });
-    h+='</div><div class="desc" style="margin-top:6px">崗位：'+Object.values(ROLES).map(o=>o.n+'＝'+o.d).join('；')+'。</div>';
+    const A=allDisc();const by=k=>A.filter(m=>m.role===k).length;
+    h+='<div class="label" style="margin-top:8px">弟子<em>記名 '+c.members.length+' / '+capOf()+' · 入室 '+innerN()+' / '+innerCap()+(headD()?' · 親傳 1':'')+'</em></div>'+
+      '<div class="desc">'+(A.length?Object.entries(ROLES).map(([k,o])=>o.n+' '+by(k)).join('、'):'未有弟子')+'</div>'+
+      '<div class="draw-acts"><button class="btn" type="button" data-a="hubgo" data-cat="job">安排弟子工作</button><button class="btn" type="button" data-a="hubgo" data-cat="ov">人物總覽</button><button class="btn" type="button" data-a="hubgo" data-cat="zm">招募'+((c.visitors||[]).length?'（'+c.visitors.length+' 人求見）':'')+'</button></div>';
   }
   $('mBody').innerHTML=h;
 }
 function onCareerClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
   const a=b.dataset.a,id=+b.dataset.id;
+  if(a==='hubgo'){openHub(b.dataset.cat);return;}
   if(a==='stsub'||a==='stsub2'){submitTask(a==='stsub2');return;}
   if(a==='tpub'){const t=STASK()[+b.dataset.i];if(t){t.on=!t.on;persist();renderAll();carMsg(t.on?'發佈咗「'+OWN_T[t.kind].n+'」，今年之內會有弟子接':'撤回咗「'+OWN_T[t.kind].n+'」');}return;}
   if(a==='sectgo'){const v=($('sectSel')||{}).value;if(v)joinSect(v);return;}
@@ -3566,14 +3627,14 @@ $('modal').onclick=e=>{if(e.target===$('modal')){$('modal').hidden=true;kickEven
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').hidden=true;closePop();}});
 $('mBody').addEventListener('click',e=>{if(mTab==='rel')onRelClick(e);});
 $('mBody').addEventListener('keydown',e=>{if(mTab==='rel'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onRelClick(e);}});
-$('innerRow').addEventListener('click',e=>{const b=e.target.closest('.dz');if(!b||busy)return;const k=b.dataset.cell;if(k==='dl')showDLCell();else if(k==='kid')showKids();else if(k==='head'){const h=headD();if(h)showDisciple(h.id);else showInnerList();}else if(k==='inner'){const m=inner().find(x=>!isHead(x));if(m)showDisciple(m.id);else showInnerList();}else if(k==='wai'){const m=C().members.find(x=>(x.rk||0)>=1);if(m)showDisciple(m.id);else showJiming();}else if(k==='jm')showJiming();});
+$('innerRow').addEventListener('click',e=>{const b=e.target.closest('.dz');if(!b||busy)return;const k=b.dataset.cell;if(k==='wai')hubShow(C().members.some(x=>(x.rk||0)===1)?'wai':C().members.some(x=>(x.rk||0)>=2)?'nei':'wai');else if(k==='jm')hubShow((C().visitors||[]).length?'zm':'jm');else hubShow(k);});
 $('pop').addEventListener('click',e=>{if(e.target===$('pop')){closePop();return;}onPopClick(e);});
 $('popClose').onclick=closePop;
 
 $('mtAch').onclick=()=>{mTab='ach';renderModal();};
 $('mtCodex').onclick=()=>{mTab='codex';renderModal();};
 $('mtLife').onclick=()=>{mTab='life';renderModal();};
-$('mtRel').onclick=()=>openTab('rel');
+$('mtRel').onclick=()=>openHub('ov');
 $('mtCar').onclick=()=>{mTab='car';$('mMsg').textContent='';renderModal();};
 $('openCar').onclick=()=>{mTab='car';$('modal').hidden=false;$('mMsg').textContent='';renderModal();};
 $('mBody').addEventListener('click',e=>{
@@ -3659,7 +3720,7 @@ $('stats').addEventListener('click',e=>{if(busy)return;if(e.target.closest('#nec
 $('quests').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(!b||busy)return;
   if(b.dataset.q==='more'){pop('<div class="pill-grade">所有任務</div><div class="testers">'+QS.map((q,i)=>'<button class="btn tester" type="button" data-a="qgo" data-id="'+i+'"><b>'+q.k+(q.ok?' ✓':'')+'</b><small>'+q.t+'</small></button>').join('')+'</div>');return;}
   const q=QS[+b.dataset.q];if(q)q.go();});
-$('openRel').onclick=()=>openTab('rel');$('dockRel').onclick=()=>openTab('rel');
+$('openRel').onclick=()=>openHub('ov');$('dockRel').onclick=()=>openHub('ov');
 $('grab').onclick=grab;
 $('task').onclick=()=>{
   if(MO().on){massacre();return;}

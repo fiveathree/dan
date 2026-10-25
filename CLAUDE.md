@@ -76,7 +76,7 @@
 | 忠誠度、升降 | `loy() addLoy() loyMult() loyBase() promote() demote() loyTick()` |
 | 生平 | `LN()` 每世計數、`bio()`、`bioTrack()`（喺 `afterAction` 比較前後狀態自動記大事）、`lifeRecord() renderLives()` |
 | 入室弟子 | `APT` 資質、`rollApt()` 抽籤連保底、`yearTick()`（每年：入室修煉壽元、忠誠、道侶、丹市、行情、丹室流失、慕名求見） |
-| 弟子頁 | `showDisciple(id)` 統一闊版（`pop(html, true)`），`discTabs()` 頂部 tag、`discOrder()` |
+| 人物中心 | `HUB` 身份 tab、`hubPeople(cat)`、`hubPop(cat, sel, 詳情html)`（闊版 pop，上 tab、左名單、右詳情）、`hubShow(cat, id)` 路由、`openHub()`、`orgHtml()`、`hubKey()`；各詳情（`showDL showKid showMaster showNPC showDisciple showJobs showJiming`）都經 `hubPop` 出；工作掣 `jobChips(who, map, cur)` + `setJob()` |
 | 丹室畫面 | `renderRoom()`：`ROOM_SLOTS ROOM_SKIN BOTTLE_SKIN GRADE_COL bottleSvg()`、`roomSel` |
 | 中間六格 | `renderInner() showKids() showInnerList() showJiming() showDLCell() showDisciple() showDraw() onPopClick()` |
 | 魔頭 | `MO()`、`becomeMo() reform() grab() massacre()`（屠村）`moTick()`（奴隸挖礦、放血、逃走、圍剿）、`sacrifice(id)`、`P_ROLES`、`PRISON_CAP=Infinity`；入魔時 `renderAll()` 喺 `<html>` 加 `.mo`（白骨主題 token）、改標題同斬妖掣；`xieN()` 丹協／魔協；藥材 `xuerou` 只有魔頭解鎖 |
