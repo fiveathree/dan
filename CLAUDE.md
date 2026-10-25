@@ -55,7 +55,7 @@
 | 存檔 | `newPlayer() newSave() persist()`、舊等級換算（`gver`） |
 | 道德 | `moral() addMoral(n)`（回傳「，道德 ±n」字串，直接接落訊息）、`stance()` zheng／fan／wu、`wanted()`（≤ −50 通緝）、`moralTick()`、`fightWin(base, lv)` 打架勝算 |
 | 投胎 | `IDS` 出身、`P_APT` 玩家資質倍數同代價、`showBirth() applyBirth()`、`ready()`（未投胎、煉緊、死咗都唔准郁）、`cultMul()` |
-| 後代 | 子女入門 `kidJoin(id)`（弟子 `kidOf`、子女 `disc`）、`kidDisc(k)`；`KIDS() newKid(dl) showKid() kidAction()`（陪伴、家學、零用錢、書院、餵靈丹）`kidTick()` 親情 `kAff(k)`、`inherit(id)` |
+| 後代 | 姓氏 `pl.sur`、`pSur()`、`fixKidSur()`（啟動時統一）；子女入門 `kidJoin(id)`（弟子 `kidOf`、子女 `disc`）、`kidDisc(k)`；`KIDS() newKid(dl) showKid() kidAction()`（陪伴、家學、零用錢、書院、餵靈丹）`kidTick()` 親情 `kAff(k)`、`inherit(id)` |
 | 武學 | `mfx()` 匯總藏書 `mx`（按修煉階段乘 `WX_ST` 比例）：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox；進度 `WXP()`、`wxStage() wxTrain(id, base) trainWx(id)`，主修 `pl.wxMain` 打坐順便練 |
 | 委託 | 滿意度 `sat(o)`、`orderWoo(a,id)`（送禮、拜訪、送樣辦）、急單 `o.urgent`；`ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
 | 請求 | `REQS() newReq() reqTick() reqReady() showReq() doReq(id, yes)`；`pl.reqs: [{id, src:'npc'|'disc', ref, name, kind, g, n, left}]` |

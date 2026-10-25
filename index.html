@@ -713,27 +713,34 @@ const IDS={
 };
 function pApt(){return P().apt===undefined?1:P().apt;}
 function cultMul(){return P_APT.cult[pApt()]*(1+mfx().nei/100);}
-let birthSel={apt:1,id:'sanxiu'};
+// 主角姓氏：子女跟你姓；舊存檔用第一個子女嘅姓
+function randSur(){return SURN[Math.floor(rnd()*SURN.length)];}
+function pSur(){const pl=P();if(!pl.sur){const k=(pl.kids||[])[0];pl.sur=k?k.name[0]:randSur();}return pl.sur;}
+function fixKidSur(){const sur=pSur();let ch=0;KIDS().forEach(k=>{if(!k.name.startsWith(sur)){const nm=sur+k.name.slice(1);const d=k.disc?allDisc().find(m=>m.id===k.disc):null;if(d)d.name=nm;k.name=nm;ch=1;}});if(ch)persist();}
+let birthSel={apt:1,id:'sanxiu',sur:''};
 function birthStones(s){return IDS[s.id].stones-P_APT.cost[s.apt];}
 function showBirth(){
-  const s=birthSel;const left=birthStones(s);
+  const s=birthSel;if(!s.sur)s.sur=randSur();const left=birthStones(s);
   openOverlay('<div class="pill-grade">第'+CN_NUM(save.lives)+'世 · 投胎</div><div class="pill-name">揀資質同出身</div>'+
     '<div class="label">資質<em>越高修煉越快、丹術進步越快、壽元越長，但要用靈石換</em></div><div class="chips">'+
     APT.map((a,i)=>'<button class="chip" type="button" data-bapt="'+i+'" aria-pressed="'+(s.apt===i)+'" style="color:'+a.c+'">'+a.n+'</button>').join('')+'</div>'+
     '<div class="desc">修為 ×'+P_APT.cult[s.apt]+'　丹術經驗 ×'+P_APT.xp[s.apt]+'　壽元 +'+APT[s.apt].life+'　'+(P_APT.cost[s.apt]<0?'多 '+(-P_APT.cost[s.apt]):'要 '+P_APT.cost[s.apt])+' 靈石</div>'+
     '<div class="label">出身</div><div class="testers">'+Object.entries(IDS).filter(([k])=>k!=='heir').map(([k,o])=>'<button class="btn tester" type="button" data-bid="'+k+'"'+(s.id===k?' aria-pressed="true" style="border-color:var(--bronze)"':'')+'><b>'+o.n+'（'+o.stones+' 靈石）</b><small>'+o.d+'</small></button>').join('')+'</div>'+
+    '<div class="label">姓氏<em>子女都會跟你姓</em></div><div class="car-act"><input id="bSur" type="text" maxlength="2" value="'+s.sur+'" aria-label="姓氏" style="width:5em;text-align:center"><button class="btn" type="button" id="bSurR">隨機</button></div>'+
     '<div class="desc">開局靈石：<b>'+left+'</b></div><button class="go" type="button" id="bGo"'+(left<0?' disabled':'')+'>入世</button>');
   $('card').querySelectorAll('[data-bapt]').forEach(b=>b.onclick=()=>{birthSel.apt=+b.dataset.bapt;showBirth();});
   $('card').querySelectorAll('[data-bid]').forEach(b=>b.onclick=()=>{birthSel.id=b.dataset.bid;showBirth();});
+  $('bSur').oninput=e=>{birthSel.sur=e.target.value.trim().slice(0,2);};
+  $('bSurR').onclick=()=>{birthSel.sur=randSur();showBirth();};
   $('bGo').onclick=()=>{if(birthStones(birthSel)>=0)applyBirth(birthSel);};
 }
 function applyBirth(s){
   const pl=P();const I=IDS[s.id];
-  Object.assign(pl,{born:true,apt:s.apt,id:s.id,stones:birthStones(s),moral:I.moral||0,demon:I.demon||0});
+  Object.assign(pl,{born:true,apt:s.apt,id:s.id,stones:birthStones(s),moral:I.moral||0,demon:I.demon||0,sur:(s.sur||'').trim().slice(0,2)||randSur()});
   if(I.skill)C().skill=I.skill;
   if(I.herbs)Object.entries(I.herbs).forEach(([k,n])=>bagAdd(k,n));
   if(I.book){gainBook(I.book);WXP()[I.book]=40;pl.wxMain=I.book;}
-  pl.bio=[];bio('以'+I.n+'出身入門學煉丹，資質「'+APT[s.apt].n+'」');
+  pl.bio=[];bio(pl.sur+'氏，以'+I.n+'出身入門學煉丹，資質「'+APT[s.apt].n+'」');
   closeOverlay();afterAction();toast('第 '+save.lives+' 世：'+I.n+'，資質'+APT[s.apt].n);
 }
 function ready(){const pl=P();return!busy&&pl.alive&&pl.born!==false;}
@@ -741,10 +748,10 @@ function ready(){const pl=P();return!busy&&pl.alive&&pl.born!==false;}
 /* ---------- 後代同遺產 ---------- */
 function KIDS(){const pl=P();if(!pl.kids)pl.kids=[];return pl.kids;}
 function newKid(d){
-  const pl=P();const g=GIVEN[Math.floor(rnd()*GIVEN.length)];
+  const pl=P();const used=KIDS().map(k=>k.name.slice(-1));const pool=GIVEN.filter(g=>!used.includes(g[0]));const g=(pool.length?pool:GIVEN)[Math.floor(rnd()*(pool.length||GIVEN.length))];
   let a=0;const r=rnd()*100;a=r<20?0:r<60?1:r<85?2:r<96?3:4;
   if(rnd()<.35&&(pl.realm>=3||(d&&d.realm>=3)||pApt()>=3))a=Math.min(4,a+1);
-  const k={id:'k'+(++save.kidId||(save.kidId=1)),name:SURN[Math.floor(rnd()*SURN.length)]+g[0],f:g[1],apt:a,age:0,sk:0,par:d?d.name:''};
+  const k={id:'k'+(++save.kidId||(save.kidId=1)),name:pSur()+g[0],f:g[1],apt:a,age:0,sk:0,par:d?d.name:''};
   KIDS().push(k);save.st.kids=(save.st.kids||0)+1;bio((d?'同'+d.name+'誕下':'得咗')+(k.f?'女兒':'兒子')+k.name+'（資質'+APT[a].n+'）');
   return k;
 }
@@ -803,7 +810,7 @@ function inherit(id){
   const old=P();const k=(old.kids||[]).find(x=>x.id===id);if(!k)return;
   const np=newPlayer();
   Object.assign(np,{born:true,apt:k.apt,id:'heir',age:Math.max(16,k.age),stones:Math.round(old.stones*.8),moral:Math.round((old.moral||0)/2),
-    dr:old.dr,bag:old.bag,heirOf:true});
+    dr:old.dr,bag:old.bag,heirOf:true,sur:old.sur||k.name[0]});
   np.car.skill=k.sk;np.ly=np.age;
   np.kids=[];np.npcs=(old.npcs||[]).filter(n=>n.rel==='you'||n.rel==='chou').map(n=>Object.assign({},n,{note:(n.rel==='you'?'先人嘅舊交：':'先人結落嘅仇：')+n.note}));
   (old.kids||[]).filter(x=>x!==k).forEach(x=>np.npcs.push({id:'n'+(++save.npcId),name:x.name,rel:'you',note:'你嘅'+(x.f?'姊妹':'兄弟'),aff:70,since:np.age}));
@@ -1646,7 +1653,7 @@ function meHtml(){
   return('<div class="me-fig">'+meSvg()+'</div>'+
     '<div class="pill-grade">'+titleOf()+'</div><div class="pill-name">'+realmName(pl.realm,pl.cult)+'</div>'+
     '<dl class="dz-info"><dt>修為</dt><dd>'+bar(pl.cult,'var(--jade)')+Math.round(pl.cult)+'%</dd>'+
-    '<dt>壽元</dt><dd>'+pl.age+' / '+(ls>9000?'∞':ls)+' 歲</dd>'+
+    '<dt>姓氏</dt><dd>'+pSur()+'氏</dd><dt>壽元</dt><dd>'+pl.age+' / '+(ls>9000?'∞':ls)+' 歲</dd>'+
     '<dt>資質</dt><dd><span style="color:'+APT[pApt()].c+'">'+APT[pApt()].n+'</span> · '+IDS[pl.id||'sanxiu'].n+' · '+STANCE[stance()].n+'（道德 '+Math.round(moral())+'）</dd>'+
     '<dt>毒／心魔</dt><dd>'+Math.round(pl.tox)+' ／ '+Math.round(pl.demon)+'</dd>'+
     '<dt>戰力</dt><dd>'+f.atk+'　防禦 '+f.def+'　身法 '+f.dodge+'</dd>'+
@@ -3829,7 +3836,7 @@ function showDeath(){
   $('seeLives').onclick=()=>openTab('life');
   $('card').classList.toggle('death-card',!d.win);
   $('card').querySelectorAll('[data-heir]').forEach(b=>b.onclick=()=>inherit(b.dataset.heir));
-  $('rebirth').onclick=()=>{save.player=newPlayer();delete save.dead;save.lives++;bioTrack();closeOverlay();$('log').innerHTML='';current=null;birthSel={apt:1,id:'sanxiu'};afterAction();showBirth();};
+  $('rebirth').onclick=()=>{save.player=newPlayer();delete save.dead;save.lives++;bioTrack();closeOverlay();$('log').innerHTML='';current=null;birthSel={apt:1,id:'sanxiu',sur:''};afterAction();showBirth();};
 }
 function afterAction(){moTick();yearTick();bioTrack();checkLife();checkAch();fixCfg();persist();renderAll();kickEvents();}
 
@@ -3999,7 +4006,7 @@ $('reset').onclick=()=>{
   if(!resetArm){resetArm=true;$('mMsg').textContent='再撳多次「全部重來」就會清除所有進度、成就同丹譜。';setTimeout(()=>{resetArm=false;},4000);return;}
   save=newSave();UNL=unlockedSet();resetArm=false;ensureStart();Object.assign(cfg,JSON.parse(JSON.stringify(DEFAULT_CFG)));
   current=null;closeOverlay();$('log').innerHTML='';persist();renderAll();$('mMsg').textContent='天地重開。';
-  $('modal').hidden=true;birthSel={apt:1,id:'sanxiu'};showBirth();
+  $('modal').hidden=true;birthSel={apt:1,id:'sanxiu',sur:''};showBirth();
 };
 
 /* ---------- 其他 ---------- */
@@ -4054,7 +4061,7 @@ $('tFa').onclick=()=>setTab('fa');$('tHuo').onclick=()=>setTab('huo');$('tShelf'
 setTab('shelf');
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,ms||2600);}
 
-ensureStart();bioTrack();fixCfg();resize();renderAll();
+ensureStart();fixKidSur();bioTrack();fixCfg();resize();renderAll();
 if(!P().alive&&save.dead)showDeath();else if(!P().alive)P().alive=true;
 if(P().alive&&P().born===false)showBirth();
 requestAnimationFrame(loop);
