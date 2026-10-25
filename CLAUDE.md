@@ -76,8 +76,12 @@
 | 忠誠度、升降 | `loy() addLoy() loyMult() loyBase() promote() demote() loyTick()` |
 | 生平 | `LN()` 每世計數、`bio()`、`bioTrack()`（喺 `afterAction` 比較前後狀態自動記大事）、`lifeRecord() renderLives()` |
 | 入室弟子 | `APT` 資質、`rollApt()` 抽籤連保底、`yearTick()`（每年：入室修煉壽元、忠誠、道侶、丹市、行情、丹室流失、慕名求見） |
+| 任務（外務） | `MS_T`、`MSN()`（`pl.msn={offers, active}`）、`newMission() missionTick() msChance() msScore() showMissions() msAction()`；`onMs(m)` 出任務嘅人唔計日常工作；hub key `ms2` |
+| 工作版 | `showJobs()` 分組、`canUp/canDown rankUp/rankDown`、`autoJobs()` |
+| 傳授 | `teachTarget(who) teachWho(cat,sel) showTeach() teachBook()`；人物 `bk` 已學書、`wx` 武學數 |
 | 人物中心 | `HUB` 身份 tab、`hubPeople(cat)`、`hubPop(cat, sel, 詳情html)`（闊版 pop，上 tab、左名單、右詳情）、`hubShow(cat, id)` 路由、`openHub()`、`orgHtml()`、`hubKey()`；各詳情（`showDL showKid showMaster showNPC showDisciple showJobs showJiming`）都經 `hubPop` 出；工作掣 `jobChips(who, map, cur)` + `setJob()` |
-| 丹室畫面 | `renderRoom()`：`ROOM_SLOTS ROOM_SKIN BOTTLE_SKIN GRADE_COL bottleSvg()`、`roomSel` |
+| 丹書 | `renderBooks()` 子分頁 `bookSub`（rec ord lib self cx）＋ `bookSel`、`recDetail()`、`orderCard()`、`quickBrew(name)` 配好即煉；`mtCodex` 跳去 `bookSub='cx'` |
+| 丹室畫面 | `renderRoom()`（冇存貨嘅丹方放 `.slot.ghost` 空瓶，撳 `rbrew` 即煉）：`ROOM_SLOTS ROOM_SKIN BOTTLE_SKIN GRADE_COL bottleSvg()`、`roomSel` |
 | 中間六格 | `renderInner() showKids() showInnerList() showJiming() showDLCell() showDisciple() showDraw() onPopClick()` |
 | 魔頭 | `MO()`、`becomeMo() reform() grab() massacre()`（屠村）`moTick()`（奴隸挖礦、放血、逃走、圍剿）、`sacrifice(id)`、`P_ROLES`、`PRISON_CAP=Infinity`；入魔時 `renderAll()` 喺 `<html>` 加 `.mo`（白骨主題 token）、改標題同斬妖掣；`xieN()` 丹協／魔協；藥材 `xuerou` 只有魔頭解鎖 |
 | 藏書與丹書 | `BOOKS`、`bookFx()`、`recipes() mastery()`、`previewRecipe()`、`applyRecipe()`、`recordBrew()`、`gradeFromQ() nameFor()`、商行藏書 |
@@ -135,6 +139,7 @@ save = {
 ```
 
 - 舊存檔冇 `born`：載入時當佢係中等資質散修（`born:true, apt:1, id:'sanxiu'`）。新一世 `newPlayer()` 係 `born:false`，啟動時會彈 `showBirth()`。
+- 所有浮窗（`#modal>.mbox`、`.pbox`）固定同一大細 `min(940px,100%) × min(720px,100%)`，內容喺 `.mscroll`／`#popBody` 入面碌。
 - 唔好隨便改存檔 key。要改格式就加遷移（參考 `gver` 嘅等級換算），因為用戶部機有舊存檔。
 - 弟子物件：`{id, name, f, pers, skill, xp, realm, role, loy, gifts, fame?, apt?, age?, cult?, hao?, rk? /* 記名弟子階級 0-2 */, gx? /* 功勞 */}`；入室弟子一定有 `apt`、`age`、`cult`。
 
@@ -154,7 +159,7 @@ python tests/smoke.py
 ```
 
 - `tests/smoke.py` 會檢查：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
-- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣`（喺 `cheat()`）。
+- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣 江湖告急`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：
 

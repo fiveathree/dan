@@ -59,7 +59,7 @@ with sync_playwright() as p:
 
     # 人物中心
     pg.click('#dockRel'); pg.wait_for_timeout(50)
-    check(pg.locator('.hub-tabs .dtab').count() == 12, '人物中心有 12 個身份分頁')
+    check(pg.locator('.hub-tabs .dtab').count() == 13, '人物中心有 13 個分頁')
     pg.click('#popClose')
 
     # 左上角撳自己
