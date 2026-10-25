@@ -57,7 +57,7 @@
 | 投胎 | `IDS` 出身、`P_APT` 玩家資質倍數同代價、`showBirth() applyBirth()`、`ready()`（未投胎、煉緊、死咗都唔准郁）、`cultMul()` |
 | 後代 | `KIDS() newKid(dl) showKid() kidAction() inherit(id)` |
 | 武學 | `mfx()` 匯總藏書 `mx`（按修煉階段乘 `WX_ST` 比例）：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox；進度 `WXP()`、`wxStage() wxTrain(id, base) trainWx(id)`，主修 `pl.wxMain` 打坐順便練 |
-| 委託 | `ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
+| 委託 | 滿意度 `sat(o)`、`orderWoo(a,id)`（送禮、拜訪、送樣辦）、急單 `o.urgent`；`ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
 | 宗門賞罰 | `sectReward(tier, force)`（靈石、藥材、書、延壽丹、`giveXianqi()` 仙器）、`sectPunish('late'|'jie')`、`sectLog()` 寫入 `car.log` |
 | 宗門階級 | `RANKS RANK_GX STIPEND UPKEEP`、`newSectTask() taskReady(t,ex) submitTask(ex) rankUps() sectTick()`（每年：月俸、俸祿、任務過期、大比、挖角）、`switchSect()`、自創宗門 `STASK() ownTaskTick() rankOf(m) promoGate(m)`、`renderSectTasks()`；大比／挖角係 `HOME_EV` 入面 `w:0` 嘅事件，用 `queueEv(k)` 排 |
 | 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()`；`askConfirm(問, 說明, 確定動作, id, 返轉頭動作)` 唔可以返轉頭嘅動作先彈窗問 |
@@ -117,7 +117,7 @@ save = {
     dl: 道侶|null, bag: {藥材id: 數量}, dr: {lvl, stacks, bottle, bagLv},
     n: {每世計數}, bio: [{a, t}], bt: {bioTrack 上次狀態}, ly: 上次 yearTick 年歲,
     born /* false＝未揀資質出身 */, apt /* 0-4 */, id /* IDS key */, moral /* −100..100 */,
-    kids: [{id, name, f, apt, age, sk, par}], orders: [{id, who, name, g, need, fair, wait, cfg, special}],
+    kids: [{id, name, f, apt, age, sk, par}], orders: [{id, who, name, g, need, fair, wait, cfg, special, sat, urgent}],
     unl: [上山搵藥解鎖嘅藥材id], wx: {武學書id: 0-100}, wxMain, npcs: [{…, mo /* 魔道中人 */, dk /* 道侶種類 */, vis /* 拜訪次數 */}]
   }
 }

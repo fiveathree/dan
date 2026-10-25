@@ -707,15 +707,28 @@ function newOrder(){
   const name=names[Math.floor(rnd()*names.length)];const e=L[name];
   const special=SPECIAL.includes(name);const g=1+Math.floor(rnd()*e.g);const need=1+Math.floor(rnd()*2);
   const o={id:'o'+(++save.ordId||(save.ordId=1)),who:SURN[Math.floor(rnd()*SURN.length)]+CLIENTS[Math.floor(rnd()*CLIENTS.length)],
-    name,g,need,fair:Math.round(GRADE_BASE[g]*1.6*(special?1.4:1)*need),wait:3+Math.floor(rnd()*3),cfg:e.cfg,special};
+    name,g,need,fair:0,wait:3+Math.floor(rnd()*3),cfg:e.cfg,special,sat:50,urgent:rnd()<.3};
+  o.fair=Math.round(GRADE_BASE[g]*1.6*(special?1.4:1)*(o.urgent?1.5:1)*need);if(o.urgent)o.wait=2;
   ORD().push(o);return o;
 }
 function orderTick(msgs){
   const c=C();const O=ORD();
-  P().orders=O.filter(o=>{o.wait--;if(o.wait<=0){msgs.push(o.who+'等唔到'+o.name+'，失望離開');return false;}return true;});
+  P().orders=O.filter(o=>{o.wait--;if(o.wait<=0){msgs.push(o.who+'等唔到'+o.name+'，失望離開');return false;}
+    o.sat=Math.max(0,sat(o)-3);if(o.sat<15&&rnd()<.4){msgs.push(o.who+'等到唔耐煩，搵咗第二個丹師');return false;}return true;});
   if(!famous()||MO().on||wanted()||ORD().length>=2)return;
   const ch=4+c.cert*2+Math.max(0,moral()-20)/4+(c.aff==='own'?5:0);
-  if(rnd()*100<ch){const o=newOrder();if(o)msgs.push(o.who+'慕名而嚟，求你煉'+o.name+'，喺丹書睇委託');}
+  if(rnd()*100<ch){const o=newOrder();if(o)msgs.push((o.urgent?'急！':'')+o.who+'慕名而嚟，求你煉'+o.name+'，喺丹書睇委託');}
+}
+function sat(o){return o.sat===undefined?50:o.sat;}
+function giftCost(o){return Math.max(50,Math.round(o.fair*.1));}
+function sampleIdx(o){const st=DR().stacks;let best=-1;st.forEach((x,i)=>{if(x.name===o.name&&!FAIL_KINDS.includes(x.kind)&&(best<0||x.grade<st[best].grade))best=i;});return best;}
+// 刷滿意度：送禮、登門拜訪、送樣辦
+function orderWoo(a,id){
+  const o=ORD().find(x=>x.id===id);if(!o||busy)return;const pl=P();let t='';
+  if(a==='ogift'){const c=giftCost(o);if(pl.stones<c)return;pl.stones-=c;o.sat=Math.min(100,sat(o)+15);t='你送咗份 '+c+' 靈石嘅禮去'+o.who+'度，滿意度 +15。';}
+  else if(a==='ovisit'){pl.age+=1;o.sat=Math.min(100,sat(o)+25);t='你親自登門拜訪'+o.who+'，傾咗成日，滿意度 +25（用咗一年）。';}
+  else if(a==='osample'){const i=sampleIdx(o);if(i<0)return;const st=DR().stacks;st[i].count--;const g=st[i].gradeName;if(st[i].count<=0)st.splice(i,1);o.sat=Math.min(100,sat(o)+30);t='你送咗一粒'+g+o.name+'畀'+o.who+'做樣辦，佢眼都亮埋，滿意度 +30。';}
+  afterAction();bookMsg(t);toast(t,3500);
 }
 function orderMissing(o){return[...new Set(o.cfg.order)].filter(id=>!isUnl('ing',id));}
 function huntCost(o){return 100+orderMissing(o).reduce((a,id)=>a+ING[id].p*3,0);}
@@ -737,24 +750,28 @@ function renderOrders(){
   const O=ORD();if(!O.length)return'';
   let h='<div class="label">委託（'+O.length+'）<em>煉好之後喺出丹卡撳「交委託」，自己揀分幾多粒、收幾多錢</em></div><div class="mems" style="margin-bottom:8px">';
   O.forEach(o=>{const miss=orderMissing(o);
-    h+='<div class="mem"><div class="mem-h"><b>'+o.who+'</b>'+(o.special?'<span class="tag bad">奇丹</span>':'')+'<span class="desc">求'+GRADES[o.g]+'或以上「'+o.name+'」×'+o.need+' · 預算約 '+o.fair+' 靈石 · 仲等 '+o.wait+' 年</span></div>'+
+    h+='<div class="mem"><div class="mem-h"><b>'+o.who+'</b>'+(o.urgent?'<span class="tag bad">急單</span>':'')+(o.special?'<span class="tag bad">奇丹</span>':'')+'<span class="desc">求'+GRADES[o.g]+'或以上「'+o.name+'」×'+o.need+' · 預算約 '+o.fair+' 靈石 · 仲等 '+o.wait+' 年</span></div>'+
+      '<div class="desc">滿意度 <span class="meter wide"><i style="width:'+sat(o)+'%;background:'+(sat(o)>=80?'var(--jade)':sat(o)<30?'var(--cinnabar)':'var(--bronze)')+'"></i></span> '+Math.round(sat(o))+(sat(o)>=80?'（好滿意：收貴啲都肯，仲會打賞）':sat(o)<30?'（快啲唔耐煩）':'')+'</div>'+
       '<div class="desc">'+PATHS[o.cfg.path].n+' · '+FIRES[o.cfg.fire].n+' · 火候'+CN[o.cfg.heat]+' · '+o.cfg.order.map(k=>ING[k].n).join('、')+(o.special?'。奇丹唔一定煉得成，要有心理準備。':'')+'</div>'+
       (miss.length?'<div class="desc bad">缺藥：'+miss.map(k=>ING[k].n).join('、')+'</div>':'')+
       '<div class="draw-acts">'+(miss.length?'<button class="btn" type="button" data-a="ohunt" data-id="'+o.id+'"'+(P().stones<huntCost(o)?' disabled':'')+'>加錢上山搵藥（'+huntCost(o)+' 靈石，耗一年）</button>':'<button class="btn" type="button" data-a="oapply" data-id="'+o.id+'">按丹方配好</button>')+
+      '<button class="btn" type="button" data-a="ogift" data-id="'+o.id+'"'+(P().stones<giftCost(o)||sat(o)>=100?' disabled':'')+'>送禮（'+giftCost(o)+'）</button>'+
+      '<button class="btn" type="button" data-a="ovisit" data-id="'+o.id+'"'+(sat(o)>=100?' disabled':'')+'>登門拜訪（耗一年）</button>'+
+      '<button class="btn" type="button" data-a="osample" data-id="'+o.id+'"'+(sampleIdx(o)<0||sat(o)>=100?' disabled title="丹室要有一粒'+o.name+'"':'')+'>送樣辦</button>'+
       '<button class="btn" type="button" data-a="odrop" data-id="'+o.id+'">推辭</button></div></div>';});
   return h+'</div>';
 }
 function orderFor(p){return p&&!FAIL_KINDS.includes(p.kind)?ORD().find(o=>o.name===p.name&&p.grade>=o.g):null;}
 function deliverScore(o,x,price){
   const per=o.fair/o.need;const q=Math.min(x/o.need,1)+Math.max(0,x-o.need)*.1;
-  return q-Math.max(0,price/(per*x)-1)*.9;
+  return q-Math.max(0,price/(per*x)-1)*.9+(sat(o)-50)/100;
 }
 function deliverMood(s){return s>=1.05?['好滿意','good']:s>=.85?['可以接受','']:s>=.6?['有啲唔情願，一半機會肯','bad']:['會嬲到走人','bad'];}
 function showDeliver(id){
   const o=ORD().find(x=>x.id===id);const p=current;if(!o||!p)return;
   const mx=Math.max(o.fair*3,10);const st=Math.max(1,Math.round(o.fair/20));
   openOverlay('<div class="pill-grade">交委託 · '+o.who+'</div><div class="pill-name">'+p.gradeName+p.name+'<span class="pill-count">×'+p.count+'</span></div>'+
-    '<p class="desc">'+o.who+'要 '+o.need+' 粒，預算約 '+o.fair+' 靈石（每粒約 '+Math.round(o.fair/o.need)+'）。畀多過要求佢會更開心；收貴咗佢會唔肯。</p>'+
+    '<p class="desc">'+o.who+'要 '+o.need+' 粒，預算約 '+o.fair+' 靈石（每粒約 '+Math.round(o.fair/o.need)+'）。滿意度 '+Math.round(sat(o))+'：越高收貴啲佢都肯。畀多過要求佢會更開心；收太貴佢會唔肯。</p>'+
     '<div class="label">交畀佢<em id="dvNl"></em></div><input type="range" id="dvN" min="1" max="'+p.count+'" step="1" value="'+Math.min(o.need,p.count)+'" aria-label="交幾多粒">'+
     '<div class="label">收費<em id="dvPl"></em></div><input type="range" id="dvP" min="0" max="'+mx+'" step="'+st+'" value="'+o.fair+'" aria-label="收幾多靈石">'+
     '<div class="desc">佢嘅反應：<b id="dvR"></b></div>'+
@@ -776,8 +793,10 @@ function showDeliver(id){
     lines.push([o.who+'收咗 '+x+' 粒'+p.name+'，畀咗你 '+pr+' 靈石。','good']);
     if(s>=1.05){
       let t=o.who+'千多謝萬多謝';if(pr<=o.fair)t+=addMoral(2);
-      if(rnd()<.3){const h=rareHerb();if(h)t+='，臨走仲送你'+ING[h].n;}
-      if(rnd()<.25)addNPC({name:o.who,rel:'you',note:'你幫佢煉過丹，對你感激不盡'});
+      const hi=sat(o)>=80;
+      if(hi){const v=Math.round(pr*.2);P().stones+=v;t+='，仲打賞你 '+v+' 靈石';}
+      if(rnd()<(hi?.6:.3)){const h=rareHerb();if(h)t+='，臨走送你'+ING[h].n;}
+      if(rnd()<(hi?.6:.25))addNPC({name:o.who,rel:'you',note:'你幫佢煉過丹，對你感激不盡'});
       lines.push([t+'。','good']);
     }else if(s<.85)lines.push([o.who+'勉強收貨，嘴裏唸唸有詞。']);
     showOutcome('委託完成',lines,'');afterAction();
@@ -2325,6 +2344,7 @@ function onBookClick(e){
   if(a==='apply')applyRecipe(b.dataset.n);else if(a==='self')selfCreate();else if(a==='buy')buyBook(b.dataset.id);
   else if(a==='wxt')trainWx(b.dataset.id);
   else if(a==='wxm'){P().wxMain=b.dataset.id;persist();renderAll();bookMsg('以後打坐都會順便修煉《'+BOOKS[b.dataset.id].n+'》。');}
+  else if(a==='ogift'||a==='ovisit'||a==='osample')orderWoo(a,b.dataset.id);
   else if(a==='ohunt')huntHerbs(b.dataset.id);else if(a==='oapply')applyOrder(b.dataset.id);else if(a==='odrop')dropOrder(b.dataset.id);
 }
 
@@ -2504,7 +2524,9 @@ function renderCareer(){
     h+='<div class="car-act"><button class="btn" type="button" data-a="xie" '+(c.cert<1?'disabled':'')+'>加入'+xieN(true)+'</button><span class="desc">要一品丹證</span></div>';
   }
   if(c.aff!=='own'){
-    h+='<div class="label" style="margin-top:4px">'+(c.aff==='sect'?'轉投門派<em>由記名弟子做起，舊師傅會心淡，道德 −2</em>':'拜入門派（要三品丹證、築基期）')+'</div><div class="sect-list">'+Object.entries(SECTS).filter(([id])=>id!==c.sect).map(([id,s])=>'<button class="btn" type="button" data-a="sect" data-id="'+id+'" '+(c.cert<3||pl.realm<1?'disabled':'')+'><b>'+s.n+'</b><small>'+s.d+'</small></button>').join('')+'</div>';
+    h+='<div class="label" style="margin-top:4px">'+(c.aff==='sect'?'轉投門派<em>由記名弟子做起，舊師傅會心淡，道德 −2</em>':'拜入門派（要三品丹證、築基期）')+'</div>';
+    {const L=Object.entries(SECTS).filter(([id])=>id!==c.sect);const no=c.cert<3||pl.realm<1;
+    h+='<div class="car-act"><select id="sectSel" aria-label="揀門派">'+L.map(([id,s])=>'<option value="'+id+'">'+s.n+'</option>').join('')+'</select><button class="btn" type="button" data-a="sectgo"'+(no?' disabled':'')+'>'+(c.aff==='sect'?'轉投':'拜入')+'</button></div><div class="desc" id="sectDesc">'+L[0][1].d+'</div>';}
   }
   if(c.aff!=='own'){
     const ok=c.cert>=5&&pl.realm>=2;
@@ -2551,6 +2573,7 @@ function onCareerClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
   const a=b.dataset.a,id=+b.dataset.id;
   if(a==='stsub'||a==='stsub2'){submitTask(a==='stsub2');return;}
+  if(a==='sectgo'){const v=($('sectSel')||{}).value;if(v)joinSect(v);return;}
   if(a==='exam')takeExam();else if(a==='xie')joinXie();else if(a==='sect')joinSect(b.dataset.id);
   else if(a==='own')createSect(($('sectName')||{}).value);else if(a==='rec')recruit(id);
   else if(a==='dis'){const m=C().members.find(x=>x.id===id);if(m)askConfirm('請'+m.name+'落山？','佢會即刻執包袱走，唔會返嚟。','cdisok',id,'cback');}
@@ -3110,6 +3133,7 @@ $('mBody').addEventListener('click',e=>{
     if(P().stones<costOf()){toast('已配好「'+b.dataset.n+'」，但靈石唔夠開爐（要 '+costOf()+'）',3500);}else brew();}return;}
   if(mTab==='car')onCareerClick(e);else if(mTab==='book'||mTab==='wx')onBookClick(e);else if(mTab==='shop'){onBookClick(e);onRoomClick(e);}else if(mTab==='room')onRoomClick(e);});
 $('mBody').addEventListener('change',e=>{
+  if(e.target.id==='sectSel'){$('sectDesc').textContent=SECTS[e.target.value].d;return;}
   const s=e.target.closest('[data-tsk]');if(!s||mTab!=='car')return;
   const id=+s.value;STASK().forEach(t=>{if(id&&t.who===id)t.who=0;});STASK()[+s.dataset.tsk].who=id;persist();renderAll();
 });
