@@ -77,7 +77,7 @@
 | 忠誠度、升降 | `loy() addLoy() loyMult() loyBase() promote() demote() loyTick()` |
 | 生平 | `LN()` 每世計數、`bio()`、`bioTrack()`（喺 `afterAction` 比較前後狀態自動記大事）、`lifeRecord() renderLives()` |
 | 入室弟子 | `APT` 資質、`rollApt()` 抽籤連保底、`yearTick()`（每年：入室修煉壽元、忠誠、道侶、丹市、行情、丹室流失、慕名求見） |
-| 任務（外務） | `MS_T`、`MSN()`（`pl.msn={offers, active}`）、`newMission() missionTick() msChance() msScore() showMissions() msAction()`；`onMs(m)` 出任務嘅人唔計日常工作；hub key `ms2` |
+| 任務（外務） | `MS_T`（12 種）、`msCap()` 人越多同時可接越多、`M.off` 暫停接新任務、`msrejall` 全部推辭、`MSN()`（`pl.msn={offers, active}`）、`newMission() missionTick() msChance() msScore() showMissions() msAction()`；`onMs(m)` 出任務嘅人唔計日常工作；hub key `ms2` |
 | 工作版 | `showJobs()` 分組、`canUp/canDown rankUp/rankDown`、`autoJobs()` |
 | 傳授 | `teachTarget(who) teachWho(cat,sel) showTeach() teachBook()`；人物 `bk` 已學書、`wx` 武學數 |
 | 人物中心 | `HUB` 身份 tab、`hubPeople(cat)`、`hubPop(cat, sel, 詳情html)`（闊版 pop，上 tab、左名單、右詳情）、`hubShow(cat, id)` 路由、`openHub()`、`orgHtml()`、`hubKey()`；各詳情（`showDL showKid showMaster showNPC showDisciple showJobs showJiming`）都經 `hubPop` 出；工作掣 `jobChips(who, map, cur)` + `setJob()` |
@@ -92,6 +92,9 @@
 | 疊層卡 | `openOverlay() showPill() showOutcome() useOne()` |
 | 食丹 | `effects(p, realm)`、`eat() test() testBy() testByMortal()` |
 | 生死 | `checkLife() endLife() showDeath()`、轉世 |
+| 散財 | 宗門建設 `BUILD BD() bdLv(k) bdCost() build() bdSvg()`（`car.bd`，`sectMountain` 畫建築同大陣光罩，`data-a=gobuild` 跳去建設頁）；行善 `CHAR CS() charity()`（`pl.cs` 今世次數），功德 `save.gd`（跨世），福報 `FUBAO`，投胎 `birthSel.fb`；拍賣 `AUC() newAuction() aucBid() aucGive() lotGive()`（`pl.auc`，每三年）；突破輔助 `pl.tc` 天材地寶、`pl.hu` 護法、`pl.hj` 護劫法陣、`aidBonus()`；靈獸 `pl.pet`；洗髓 `xisui(id) XS_COST`；秘境 `MJ goMj() mjSel`；外交 `DIP() allies() foeSect() shield(k) gift()`（`car.dip`）；每年 `spendTick()`；頁面 click 經 `onSpendClick()` |
+| 事件紀錄 | `elog(t,msg,cls)`（`log()`、`bio()`、yearTick 訊息都會寫入 `pl.evlog`，最多 300 條）、`renderElog()`；重大事件 `watchRoster()`（`afterAction` 入面比較 `pl.rs` 名單）→ `pl.alerts` → `showAlerts()` 彈窗（`flushEvents` 都會試） |
+| 一鍵送靈石 | `GIFT_CAT giftTargets() giftBar() giftAll()`，`hubPop` 自動喺分類頁頂加掣 |
 | 導航 | `SECS`（區同子分頁 leaf）、`mTab`＝而家 leaf、`secLast` 記住每區上次分頁、`TAB_ALIAS`（舊名 shop→mkt、rel→people、codex→book）、`drawNav() renderModal() openTab(leaf)`；`#mBody` click 按 leaf 分派（people→`onPopClick`、car/sect/pr→`onCareerClick`、book/wx→`onBookClick`、產業→`onBookClick`+`onRoomClick`）；人物中心 `hubPop()` 直接畫入主視窗 |
 
 ### 核心流程
@@ -99,7 +102,7 @@
 - **任何改變狀態嘅動作之後都要叫 `afterAction()`**：
 
   ```js
-  afterAction() = moTick(); yearTick(); bioTrack(); checkLife(); checkAch(); fixCfg(); persist(); renderAll(); kickEvents();
+  afterAction() = moTick(); yearTick(); bioTrack(); checkLife(); watchRoster(); checkAch(); fixCfg(); persist(); renderAll(); if(!showAlerts()) kickEvents();
   ```
 
 - **時間**：開爐用 `nextSeason()`（`pl.season` 0-3，四季先 `age+1`）；其他動作用 `P().age += 1` 代表過一年，之後叫 `afterAction()`。每年要做嘅嘢放喺 `yearTick()` 個 while 迴圈入面（用 `pl.ly` 計過咗幾多年）。
@@ -161,7 +164,7 @@ python tests/smoke.py
 ```
 
 - `tests/smoke.py` 會檢查（導航用 `#ms_<區>`、`#ml_<leaf>`）：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
-- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣 江湖告急`（喺 `cheat()`）。
+- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣 江湖告急 富可敵國 功德無量 拍賣開鎚 大興土木 天材地寶 親傳失蹤`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：
 
