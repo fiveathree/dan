@@ -1380,7 +1380,10 @@ function previewRecipe(r){
     cfg.heat=r.heat||5;let a=analyse();
     if(!r.heat){cfg.heat=a.ideal;a=analyse();}
     const nm=nameFor(a,gradeFromQ(a.Q,cfg.fire,cfg.furn),cfg.path);
-    return{name:nm.name,g:nm.g,kind:nm.kind,heat:cfg.heat,rate:successRate(a)};
+    const n=yieldCount();const inf=pillInfo(nm.name)||{path:cfg.path};
+    const each=sellValue({name:nm.name,grade:nm.g,kind:nm.kind,path:inf.path});
+    const rev=quoteN({name:nm.name,grade:nm.g,kind:nm.kind,path:inf.path},n);
+    return{name:nm.name,g:nm.g,kind:nm.kind,heat:cfg.heat,rate:successRate(a),cost:costOf(),n,each,rev};
   }finally{Object.assign(cfg,JSON.parse(keep));}
 }
 function missingFor(c){
@@ -1452,6 +1455,11 @@ function selfCreate(){
 }
 function ensureStart(){if(!save.recipes){save.recipes={};books().forEach(id=>(BOOKS[id].rec||[]).forEach(r=>learnRecipe(r,BOOKS[id].n)));persist();}}
 function bookMsg(t){$('mMsg').textContent=t;}
+// 成本＝而家開爐要畀嘅靈石（藥囊有嘅藥材唔使錢）；利潤＝成功出丹全部賣出 − 成本
+function profitLine(pv){
+  const pf=pv.rev-pv.cost;
+  return'<span class="desc">成本 '+pv.cost+' · 現價 '+pv.each+'×'+pv.n+' · 利潤 <b class="'+(pf>=0?'up':'dn')+'">'+(pf>=0?'+':'−')+Math.abs(pf)+'</b></span>';
+}
 function renderBooks(){
   const R=recipes(),M=mastery();const fx=bookFx();
   let h='<div class="label">丹方（'+Object.keys(R).length+'）<em>撳「配好」即刻將丹道、心法、火、火候、爐同藥材順序一次過設定</em></div><div class="recs">';
@@ -1461,7 +1469,7 @@ function renderBooks(){
     h+='<div class="rec"><div class="mem-h"><b>'+name+'</b><span class="tag">'+(pv?'預計'+GRADES[pv.g]:'最佳'+GRADES[e.g])+'</span><span class="tag '+(cnt?'good':'')+'">'+masteryN(cnt)+(cnt?' ×'+cnt:'')+'</span><span class="desc">'+e.src+'</span></div>'+
       '<div class="desc">'+PATHS[c.path].n+' · '+ARTS[c.art].n+' · '+FIRES[c.fire].n+' · 火候'+CN[c.heat]+' · '+FURN[c.furn].n+'</div>'+
       '<div class="desc">'+c.order.map((id,i)=>{const n=c.order.length;return(i===0?'君':i===1?'臣':(i===n-1&&n>2)?'使':'佐')+' '+ING[id].n;}).join('　')+'</div>'+
-      '<div class="car-act">'+(miss.length?'<span class="desc bad">未有：'+miss.join('、')+'</span>':'<span class="desc">預計成功率 '+pv.rate+'%</span><button class="btn" type="button" data-a="apply" data-n="'+name+'">一撳配好</button>')+'</div></div>';
+      '<div class="car-act">'+(miss.length?'<span class="desc bad">未有：'+miss.join('、')+'</span>':'<span class="desc">預計成功率 '+pv.rate+'%</span>'+profitLine(pv)+'<button class="btn" type="button" data-a="apply" data-n="'+name+'">一撳配好</button>')+'</div></div>';
   });
   h+='</div><div class="label" style="margin-top:8px">藏書（'+books().length+' / '+Object.keys(BOOKS).length+'）<em>'+(fx.q||fx.stab?'加成合共：丹品 +'+fx.q+'，穩定 +'+fx.stab:'')+'</em></div><div class="mems">';
   books().forEach(id=>{const B=BOOKS[id];h+='<div class="mem"><div class="mem-h"><b>《'+B.n+'》</b><span class="tag">'+BOOK_T[B.t]+'</span></div><div class="desc">'+B.d+(B.rec?' 載有 '+B.rec.length+' 條丹方。':'')+'</div></div>';});
