@@ -27,8 +27,9 @@
 | 頂部 | `header.top`、`#stats`、`.hbtns` | 狀態列由 `renderStats()` 生成；掣：`#asc` 渡劫飛升（渡劫圓滿先顯示）、`#med` 打坐、`#task` 斬妖、`#herb` 採藥、`#grab` 擄人（魔頭先顯示）、`#openBook`、`#openShop`、`#openRel` 人物、`#openCar`、`#openAch` |
 | 左面板 | `#pRecipe` | 丹道 `#paths`、心法 `#arts`、火種 `#fires`、火候 `#heat`、丹爐 `#furns`。`.g1`／`.g2` 用嚟喺手機分兩個分頁 |
 | 中 | `#stage` | `<canvas id="cv">` 爐火動畫、`#log` 爐火紀錄、`#ov > #card` 疊層卡（出丹、結果、死亡、奇遇選擇） |
+| 人物 | 關係圖中間「你」`data-k=me` → `showMe()`／`meSvg()` 打坐圖同裝備；電腦版頂部 `#openRel` 隱藏，用開爐格 `#dockRel` |
 | 中 | `#innerRow` | 三格：`[data-cell=dl]` 道侶、`[data-cell=inner]` 入室、`[data-cell=jm]` 記名 |
-| 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
+| 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockRel`／`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
 | 大彈窗 | `#modal` | 分頁 `#mtBook #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtRel #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
 | 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、記名管理 |
@@ -55,12 +56,12 @@
 | 道德 | `moral() addMoral(n)`（回傳「，道德 ±n」字串，直接接落訊息）、`stance()` zheng／fan／wu、`wanted()`（≤ −50 通緝）、`moralTick()`、`fightWin(base, lv)` 打架勝算 |
 | 投胎 | `IDS` 出身、`P_APT` 玩家資質倍數同代價、`showBirth() applyBirth()`、`ready()`（未投胎、煉緊、死咗都唔准郁）、`cultMul()` |
 | 後代 | `KIDS() newKid(dl) showKid() kidAction() inherit(id)` |
-| 武學 | `mfx()` 匯總藏書 `mx`：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox |
+| 武學 | `mfx()` 匯總藏書 `mx`（按修煉階段乘 `WX_ST` 比例）：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox；進度 `WXP()`、`wxStage() wxTrain(id, base) trainWx(id)`，主修 `pl.wxMain` 打坐順便練 |
 | 委託 | `ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
 | 宗門階級 | `RANKS RANK_GX STIPEND UPKEEP`、`newSectTask() taskReady(t,ex) submitTask(ex) rankUps() sectTick()`（每年：月俸、俸祿、任務過期、大比、挖角）、`switchSect()`、自創宗門 `STASK() ownTaskTick() rankOf(m) promoGate(m)`、`renderSectTasks()`；大比／挖角係 `HOME_EV` 入面 `w:0` 嘅事件，用 `queueEv(k)` 排 |
 | 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()`；`askConfirm(問, 說明, 確定動作, id, 返轉頭動作)` 唔可以返轉頭嘅動作先彈窗問 |
 | 丹價行情 | `prices()` 行情指數、`retailPrice()`、`makeShopPill()` |
-| 丹室、丹瓶、儲物袋 | `DR()`、`ROOM_LV BOTTLES BAGS`、`storePill() roomDecay() bagAdd()`、`renderRoom() renderMarket() renderStock()` |
+| 丹室、丹瓶、儲物袋、兵器防具 | `DR()`（`wpn` `arm` 等級）、`ROOM_LV BOTTLES BAGS WEAPONS ARMORS`、`buyGear(kind)`、`storePill() roomDecay() bagAdd()`、`renderRoom() renderMarket() renderStock()` |
 | 丹市 | `basePrice() satMult() quoteN() doSell(n,auto,quiet)`、黑市事件 |
 | 道侶 | `DL()`、`DL_KIND`、`dlTick() showDL() giftPill()` |
 | 奇遇 | `ADV` 陣列（`w` 權重、`ctx` herb／yao／both、`run(lines)` 可回傳 `{lines, choice, death}`）、`adventure() resolveAdv()` |
@@ -116,7 +117,7 @@ save = {
     n: {每世計數}, bio: [{a, t}], bt: {bioTrack 上次狀態}, ly: 上次 yearTick 年歲,
     born /* false＝未揀資質出身 */, apt /* 0-4 */, id /* IDS key */, moral /* −100..100 */,
     kids: [{id, name, f, apt, age, sk, par}], orders: [{id, who, name, g, need, fair, wait, cfg, special}],
-    unl: [上山搵藥解鎖嘅藥材id], npcs: [{…, mo /* 魔道中人 */, dk /* 道侶種類 */, vis /* 拜訪次數 */}]
+    unl: [上山搵藥解鎖嘅藥材id], wx: {武學書id: 0-100}, wxMain, npcs: [{…, mo /* 魔道中人 */, dk /* 道侶種類 */, vis /* 拜訪次數 */}]
   }
 }
 ```
@@ -141,7 +142,7 @@ python tests/smoke.py
 ```
 
 - `tests/smoke.py` 會檢查：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
-- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 拜入山門 宗門大比 五年大比 有人挖角`（喺 `cheat()`）。
+- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：
 
