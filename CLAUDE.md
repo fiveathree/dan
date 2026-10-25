@@ -27,7 +27,7 @@
 | 頂部 | `header.top`、`#stats`、`.hbtns` | 狀態列由 `renderStats()` 生成（境界名 `#meBtn` 同 `h1` 撳落開 `showMe()`）；掣：`#asc` 渡劫飛升（渡劫圓滿先顯示）、`#med` 打坐、`#task` 斬妖、`#herb` 採藥、`#grab` 擄人（魔頭先顯示）、`#openBook`、`#openShop`、`#openRel` 人物、`#openCar`、`#openAch` |
 | 左面板 | `#pRecipe` | 丹道 `#paths`、心法 `#arts`、火種 `#fires`、火候 `#heat`、丹爐 `#furns`。`.g1`／`.g2` 用嚟喺手機分兩個分頁 |
 | 中 | `#stage` | `<canvas id="cv">` 爐火動畫、`#quests` 任務欄（`questList() renderQuests()`，手機縮做一粒掣）、`#log` 爐火紀錄、`#ov > #card` 疊層卡（出丹、結果、死亡、奇遇選擇） |
-| 人物 | 關係頁 `relGroups() renderRel()`：分組卡片（家人、師門、朋友、仇敵、其他），撳 `[data-k]` 經 `onRelClick()` 分派；最頂「你」`data-k=me` → `showMe()`／`meSvg()` 打坐圖同裝備；電腦版頂部 `#openRel` 隱藏，用開爐格 `#dockRel` |
+| 人物 | 關係頁 `relGroups() renderRel()`：上半 org chart（`.org-row`），下半江湖分組卡片（家人、師門、朋友、仇敵、其他），撳 `[data-k]` 經 `onRelClick()` 分派；最頂「你」`data-k=me` → `showMe()`／`meSvg()` 打坐圖同裝備；電腦版頂部 `#openRel` 隱藏，用開爐格 `#dockRel` |
 | 中 | `#innerRow` | 六格（`renderInner()`）：`[data-cell=dl]` 道侶、`kid` 子女（`showKids()`）、`head` 親傳、`inner` 入室、`wai` 外門、`jm` 記名；手機只顯示名同人數 |
 | 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockRel`／`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
@@ -60,6 +60,10 @@
 | 委託 | 滿意度 `sat(o)`、`orderWoo(a,id)`（送禮、拜訪、送樣辦）、急單 `o.urgent`；`ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
 | 請求 | `REQS() newReq() reqTick() reqReady() showReq() doReq(id, yes)`；`pl.reqs: [{id, src:'npc'|'disc', ref, name, kind, g, n, left}]` |
 | 宗門賞罰 | `sectReward(tier, force)`（靈石、藥材、書、延壽丹、`giveXianqi()` 仙器）、`sectPunish('late'|'jie')`、`sectLog()` 寫入 `car.log` |
+| 名聲 | `FM()`（`pl.fm={g 美名, b 臭名}`）、`addFame(g,b)` 回傳「，美名 +n」字串、`fameTick()` 排美名／臭名事件（`HOME_EV` 嘅 `fg*`、`fb*`）、影響 `capOf() innerCap()`、慕名、委託 |
+| 開宗地圖 | `LOCS`（x、y、res、comp、fx）、`locOf()`、`showMap()` `mapSvg()`、`createSect(name, loc)`；`car.loc`；踢館 `HOME_EV.rival`、`sectLvUp(msgs)` |
+| 安排工作 | `DL_JOBS KID_JOBS dlJob() kidJob() jobTick() showJobs() setJob()`；道侶 `dl.job`、子女 `kid.job` |
+| 任務榜 | 自創宗門 `STASK()` 發佈制（`t.on`），`ownTaskTick()` 弟子自己接 |
 | 委派 | `deleSel(key, cur, 難度, 排除)` 下拉、`setDele()`、`deleTick()` 每年結算、`delChance(m, d)`；key 係 `t:序號`／`o:委託id`／`r:請求id`，物件上 `dz`＝弟子 id |
 | 宗門階級 | `TQ()`（`car.tasks` 任務隊列，每年派一項，最多三項）、`RANKS RANK_GX STIPEND UPKEEP`、`newSectTask() taskReady(t,ex) submitTask(ex) rankUps() sectTick()`（每年：月俸、俸祿、任務過期、大比、挖角）、`switchSect()`、自創宗門 `STASK() ownTaskTick() rankOf(m) promoGate(m)`、`renderSectTasks()`；大比／挖角係 `HOME_EV` 入面 `w:0` 嘅事件，用 `queueEv(k)` 排 |
 | 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()`；`askConfirm(問, 說明, 確定動作, id, 返轉頭動作)` 唔可以返轉頭嘅動作先彈窗問 |
@@ -72,6 +76,8 @@
 | 忠誠度、升降 | `loy() addLoy() loyMult() loyBase() promote() demote() loyTick()` |
 | 生平 | `LN()` 每世計數、`bio()`、`bioTrack()`（喺 `afterAction` 比較前後狀態自動記大事）、`lifeRecord() renderLives()` |
 | 入室弟子 | `APT` 資質、`rollApt()` 抽籤連保底、`yearTick()`（每年：入室修煉壽元、忠誠、道侶、丹市、行情、丹室流失、慕名求見） |
+| 弟子頁 | `showDisciple(id)` 統一闊版（`pop(html, true)`），`discTabs()` 頂部 tag、`discOrder()` |
+| 丹室畫面 | `renderRoom()`：`ROOM_SLOTS ROOM_SKIN BOTTLE_SKIN GRADE_COL bottleSvg()`、`roomSel` |
 | 中間六格 | `renderInner() showKids() showInnerList() showJiming() showDLCell() showDisciple() showDraw() onPopClick()` |
 | 魔頭 | `MO()`、`becomeMo() reform() grab() massacre()`（屠村）`moTick()`（奴隸挖礦、放血、逃走、圍剿）、`sacrifice(id)`、`P_ROLES`、`PRISON_CAP=Infinity`；入魔時 `renderAll()` 喺 `<html>` 加 `.mo`（白骨主題 token）、改標題同斬妖掣；`xieN()` 丹協／魔協；藥材 `xuerou` 只有魔頭解鎖 |
 | 藏書與丹書 | `BOOKS`、`bookFx()`、`recipes() mastery()`、`previewRecipe()`、`applyRecipe()`、`recordBrew()`、`gradeFromQ() nameFor()`、商行藏書 |
@@ -94,6 +100,7 @@
 - **時間**：開爐用 `nextSeason()`（`pl.season` 0-3，四季先 `age+1`）；其他動作用 `P().age += 1` 代表過一年，之後叫 `afterAction()`。每年要做嘅嘢放喺 `yearTick()` 個 while 迴圈入面（用 `pl.ly` 計過咗幾多年）。
 - **瓶頸**：`breakthrough()` 只會將修為封頂 100，唔會自動升境界；`atNeck()` 判斷瓶頸，`tryBreak(機會, 點樣)` 喺食丹、打架贏、論道、雙修、打坐、`neckGo()` 閉關衝關度試突破，回傳一句訊息（冇突破就係空字串）。左上角 `#neckBtn` → `showNeck()`。
 - **修為**：正數修為一律經 `gainCult()`（已乘 `cultMul()`＝資質×內功）；食丹喺 `eat()` 另外乘。
+- **親傳**：親傳弟子仲喺 `inner()` 陣列入面，但唔計入入室名額，用 `innerN()` 數入室人數。
 - **加成**：所有弟子、門派、道侶、牢房嘅加成都匯總喺 `team()`，回傳 `{q, stab, disc, inc, pres, helpers, wild}`。藏書加成係 `bookFx()`，熟練度喺 `analyse()` 入面計。
 - **加修為**：一律用 `gainCult(n)`（內部叫 `breakthrough()`），唔好自己寫 `while(cult>=100)` 迴圈。境界最高自動去到 `TOP`（渡劫），飛升要經 `showAscend()` 將 `realm` 設做 9。
 - **家中奇遇**：`yearTick` 入隊，`flushEvents` 會等 `#ov`、`#pop`、`#modal` 全部閂咗先彈出。新增事件加入 `HOME_EV`。
@@ -147,7 +154,7 @@ python tests/smoke.py
 ```
 
 - `tests/smoke.py` 會檢查：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
-- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿`（喺 `cheat()`）。
+- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：
 
