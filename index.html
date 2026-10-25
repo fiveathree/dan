@@ -250,7 +250,10 @@ canvas{display:block;width:100%;height:100%}
 .mt-lab{fill:#d9c9a8;font-size:12px;letter-spacing:.2em;font-family:var(--body)}
 .mt-c{fill:#fff0d4;font-size:14px;text-anchor:middle;font-family:var(--display);pointer-events:none}
 .mt-t{fill:var(--paper);font-size:11px;text-anchor:middle;font-family:var(--body);pointer-events:none}
-.mt-n{cursor:pointer}.mt-n:hover circle{filter:brightness(1.4)}.mt-n.off{cursor:default}
+.mt-n{cursor:pointer}.mt-n.drag{cursor:grab;touch-action:none}.mt-n.dragging{cursor:grabbing;opacity:.85}
+.mt-hl{fill:rgba(232,196,90,.14);stroke:#e8c45a;stroke-dasharray:6 4;pointer-events:none}
+.mt-tip{position:absolute;right:10px;bottom:6px;font-size:11px;color:#d9c9a8;text-shadow:0 1px 3px #000;max-width:60%;text-align:right;pointer-events:none}
+@media (max-width:860px){.mt-svg{max-height:none}.mt-tip{display:none}}.mt-n:hover circle{filter:brightness(1.4)}.mt-n.off{cursor:default}
 .mt-name{position:absolute;left:10px;top:8px;font-family:var(--display);font-size:16px;color:var(--bronze);text-shadow:0 1px 4px #000}
 .job-sec{margin-top:6px;border-left:3px solid var(--bronze);padding-left:8px}
 .job-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -745,6 +748,18 @@ function newKid(d){
 }
 function kAff(k){if(k.aff===undefined)k.aff=60;return k.aff;}
 function kidMood(a){return a>=80?'好黐你':a>=50?'親近':a>=25?'有啲疏離':'好怨你';}
+function kidDisc(k){return k.disc?allDisc().find(m=>m.id===k.disc)||null:null;}
+function kidJoin(id){
+  const k=KIDS().find(x=>x.id===id);const c=C();if(!k)return'';
+  if(c.aff!=='own')return'要自己開宗立派先收得子女入門。';
+  if(k.age<12)return k.name+'未夠 12 歲。';
+  if(kidDisc(k))return k.name+'已經喺宗門。';
+  if(c.members.length>=capOf())return'記名名額滿咗。';
+  const pk=Object.keys(PERS);
+  const m={id:c.nid++,name:k.name,f:k.f,pers:pk[Math.floor(rnd()*pk.length)],skill:Math.max(1,k.sk),xp:0,realm:0,role:'idle',cost:0,apt:k.apt,age:k.age,cult:0,loy:90,zp:1,kidOf:k.id,rk:0};
+  c.members.push(m);k.disc=m.id;k.aff=Math.min(100,kAff(k)+10);bio((k.f?'女兒':'兒子')+k.name+'加入'+c.sectName);afterAction();
+  return k.name+'拜入'+c.sectName+'做記名弟子，親情 +10。喺人物「記名」或者宗門大山睇到佢。';
+}
 function showKid(id,msg){
   const k=KIDS().find(x=>x.id===id);if(!k)return;const A=APT[k.apt];const a=kAff(k);const pl=P();
   const pills=DR().stacks.some(s=>!FAIL_KINDS.includes(s.kind));
@@ -752,6 +767,7 @@ function showKid(id,msg){
     '<dl class="dz-info"><dt>親情</dt><dd><span class="meter wide"><i style="width:'+a+'%;background:var(--cinnabar)"></i></span> '+Math.round(a)+'　'+kidMood(a)+'</dd>'+
     '<dt>年歲</dt><dd>'+k.age+' 歲</dd><dt>資質</dt><dd><span class="tag" style="border-color:'+A.c+';color:'+A.c+'">'+A.n+'</span></dd>'+(k.par?'<dt>出身</dt><dd>你同'+k.par+'所生</dd>':'')+
     '<dt>壽元</dt><dd>凡人之軀，大約 '+(LIFE[0]+APT[k.apt].life)+' 歲</dd><dt>家學</dt><dd>丹術'+SKILL_N[k.sk]+'</dd><dt>繼承</dt><dd>你百年之後，佢可以繼承你八成靈石、丹室、藥囊同人脈。</dd></dl>'+
+    (C().aff==='own'?'<div class="label">宗門</div><div class="car-act">'+(kidDisc(k)?'<span class="tag good">已入門 · '+RANKS[rankOf(kidDisc(k))]+'</span><button class="btn" type="button" data-a="hubk" data-k="d:'+k.disc+'">睇弟子頁</button>':'<button class="btn" type="button" data-a="kjoin" data-id="'+k.id+'"'+(k.age<12?' disabled title="要 12 歲"':'')+'>加入'+C().sectName+'</button><span class="desc">做記名弟子，資質同家學帶埋入去，正派、忠誠 90</span>')+'</div>':'')+
     '<div class="label">工作</div>'+jobChips('kid:'+k.id,KID_JOBS,kidJob(k),kidJobDis(k))+'<div class="desc">'+KID_JOBS[kidJob(k)].d+'</div>'+
     '<div class="label">照顧</div><div class="draw-acts">'+
     '<button class="btn" type="button" data-a="kplay" data-id="'+k.id+'">陪伴（耗一年）</button>'+
@@ -1172,6 +1188,23 @@ function ownTaskTick(msgs){
   sectLvUp(msgs);
 }
 /* 宗門大山：掌門坐喺山頂寶座，弟子按階級企喺各層 */
+// 直接將弟子放去某一級（拖放用），名額照計
+function moveRank(id,r){
+  const c=C();let m=allDisc().find(x=>x.id===id);if(!m)return'';const cur=rankOf(m);if(cur===r)return'';
+  if(r>=3){
+    if(!isInner(m)){if(innerN()>=innerCap())return'入室已滿（'+innerCap()+' 個），要先騰位';promote(id);m=allDisc().find(x=>x.id===id);}
+    if(r===4){const t=setHead(m);afterAction();return t;}
+    if(isHead(m)){c.head=null;addLoy(m,-10);afterAction();return m.name+'由親傳降為入室弟子。';}
+    return m.name+'升為入室弟子。';
+  }
+  if(isInner(m)){if(c.members.length>=capOf())return'記名名額滿咗（'+capOf()+' 個），放唔落';if(isHead(m))c.head=null;demote(id);m=allDisc().find(x=>x.id===id);}
+  const old=rankOf(m);m.rk=r;addLoy(m,r>old?10:-10);bio(m.name+(r>old?'升為':'降為')+RANKS[r]);afterAction();
+  return m.name+(r>old?'升為':'降為')+RANKS[r]+'，忠誠 '+(r>old?'+10':'−10')+'。';
+}
+const MT_TIERS=[[4,105],[3,160],[2,215],[1,270],[0,325]];
+let mtDrag=null,mtDragEnd=0;
+function mtPt(svg,e){const r=svg.getBoundingClientRect();const vb=svg.viewBox.baseVal;return[(e.clientX-r.left)*vb.width/r.width,(e.clientY-r.top)*vb.height/r.height];}
+function mtTier(y){if(y<80)return-1;let best=MT_TIERS[0];MT_TIERS.forEach(t=>{if(Math.abs(t[1]-y)<Math.abs(best[1]-y))best=t;});return best[0];}
 function sectMountain(){
   const c=C();if(c.aff!=='own'&&c.aff!=='sect')return'';
   const own=c.aff==='own';const W=600,H=380;
@@ -1186,7 +1219,7 @@ function sectMountain(){
       '<text x="'+(W/2-hw-6)+'" y="'+(y+6)+'" class="mt-lab" text-anchor="end">'+lab+'</text>';
     const step=show.length>1?Math.min(58,(hw*2-40)/(show.length-1)):0;const x0=W/2-step*(show.length-1)/2;
     show.forEach((q,i)=>{const x=x0+i*step;
-      tierSvg+='<g class="mt-n" data-a="hubk" data-k="'+q.k+'" tabindex="0" role="button" aria-label="'+lab+' '+q.n+'"><circle cx="'+x+'" cy="'+y+'" r="13" style="fill:#2a1d14;stroke:'+q.col+';stroke-width:'+(q.me?3:2)+'"/><text x="'+x+'" y="'+(y+5)+'" class="mt-c">'+q.n[0]+'</text><text x="'+x+'" y="'+(y+26)+'" class="mt-t">'+q.n+'</text></g>';});
+      tierSvg+='<g class="mt-n'+(own&&q.k.startsWith('d:')?' drag':'')+'" data-a="hubk" data-k="'+q.k+'" tabindex="0" role="button" aria-label="'+lab+' '+q.n+'"><circle cx="'+x+'" cy="'+y+'" r="13" style="fill:#2a1d14;stroke:'+q.col+';stroke-width:'+(q.me?3:2)+'"/><text x="'+x+'" y="'+(y+5)+'" class="mt-c">'+q.n[0]+'</text><text x="'+x+'" y="'+(y+26)+'" class="mt-t">'+q.n+'</text></g>';});
     if(L.length>show.length)tierSvg+='<text x="'+(W/2+hw-4)+'" y="'+(y+5)+'" class="mt-t" text-anchor="end">+'+(L.length-show.length)+'</text>';
   });
   const boss=own?{n:'你',k:'me'}:{n:SECTS[c.sect].n.slice(0,2)+'掌門',k:''};
@@ -1205,7 +1238,7 @@ function sectMountain(){
     '<path d="M'+(W/2)+' 20 L'+(W/2+halfW(H))+' '+H+' L'+(W/2-halfW(H))+' '+H+' Z" fill="url(#mtRock)" style="stroke:#8a7258;stroke-width:1.5"/>'+
     '<path d="M'+(W/2)+' 20 L'+(W/2+30)+' 58 L'+(W/2+12)+' 52 L'+(W/2)+' 66 L'+(W/2-14)+' 52 L'+(W/2-30)+' 58 Z" style="fill:#e8e2d6;opacity:.85"/>'+
     '<ellipse cx="120" cy="120" rx="70" ry="10" style="fill:#fff;opacity:.06"/><ellipse cx="480" cy="250" rx="80" ry="10" style="fill:#fff;opacity:.06"/>'+
-    tierSvg+throne+'</svg><div class="mt-name">'+(own?c.sectName+' · '+SECT_LV[c.lvl].n+' · '+locOf().n:SECTS[c.sect].n+' · 你係'+RANKS[c.rank||0])+'</div></div>';
+    tierSvg+throne+'<rect class="mt-hl" x="0" y="0" width="0" height="0" rx="8"/></svg>'+(own&&allDisc().length?'<div class="mt-tip">撳住弟子拖去任何一層，即刻換身份（親傳得一個，入室同記名有名額）</div>':'')+'<div class="mt-name">'+(own?c.sectName+' · '+SECT_LV[c.lvl].n+' · '+locOf().n:SECTS[c.sect].n+' · 你係'+RANKS[c.rank||0])+'</div></div>';
 }
 function renderSectTasks(){
   const c=C();
@@ -2593,6 +2626,7 @@ function showDisciple(id,msg){
     '<dt>修為</dt><dd>'+REALMS[d.realm]+'期'+(d.cult!==undefined?' <span class="meter wide"><i style="width:'+clamp(d.cult,0,100)+'%;background:var(--jade)"></i></span> '+Math.floor(d.cult)+'%':'')+'</dd>'+
     '<dt>丹術</dt><dd>'+SKILL_N[d.skill]+'</dd>'+
     '<dt>忠誠</dt><dd>'+loyTag(d)+' <span class="desc">'+(loy(d)<30?'心存不滿，效果減半':loy(d)>=80?'死心塌地，效果多一成':'安份守己')+'</span></dd>'+
+    (d.kidOf?'<dt>出身</dt><dd><span class="tag good">子女</span> 你嘅'+(d.f?'女兒':'兒子')+'</dd>':'')+
     '<dt>心性</dt><dd>'+(isZp(d)?'<span class="tag good">正派</span> 忠誠唔會隨時間跌':'普通')+(isHead(d)?'；親傳地位高，忠誠唔會跌':'')+'</dd>'+
     (!inn?'<dt>功勞</dt><dd>'+(d.gx||0)+(c.aff==='own'&&rankOf(d)<2?'（'+M_RANK_GX[rankOf(d)]+' 自動升'+RANKS[rankOf(d)+1]+'）':'')+'</dd>':'')+'</dl>';
   const right='<div class="label">工作</div>'+jobChips('d:'+d.id,ROLES,d.role)+'<div class="desc">'+ROLES[d.role].d+'</div>'+
@@ -2652,6 +2686,7 @@ function onPopClick(e){
   if(a==='hub'){hubShow(b.dataset.cat);return;}
   if(a==='hubp'){hubShow(b.dataset.cat,b.dataset.id);return;}
   if(a==='hubk'){hubKey(b.dataset.k);return;}
+  if(a==='kjoin'){const t=kidJoin(b.dataset.id);showKid(b.dataset.id,t);return;}
   if(a==='mapsel'){mapSel=b.dataset.loc;showMap();return;}
   if(a==='owngo'){closePop();createSect(pendingSect,mapSel);return;}
   if(a==='rqok'||a==='rqno'){doReq(b.dataset.id,a==='rqok');return;}
@@ -3305,7 +3340,7 @@ function renderCareer(){
 }
 function onCareerClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
-  if(b.dataset.a==='hubk'){hubKey(b.dataset.k);return;}
+  if(b.dataset.a==='hubk'){if(Date.now()-mtDragEnd<350)return;hubKey(b.dataset.k);return;}
   const a=b.dataset.a,id=+b.dataset.id;
   if(a==='hubgo'){openHub(b.dataset.cat);return;}
   if(a==='stsub'||a==='stsub2'){submitTask(a==='stsub2');return;}
@@ -3897,6 +3932,25 @@ $('mBody').addEventListener('click',e=>{
 $('popBody').addEventListener('change',e=>{const s=e.target.closest('[data-msadd]');if(!s||!s.value)return;const x=MSN().active.find(y=>y.id===s.dataset.msadd);if(x){x.team.push(s.value==='dl'?'dl':+s.value);persist();renderAll();showMissions();}});
 function onDele(e){const s=e.target.closest('[data-dele]');if(!s)return false;setDele(s.dataset.dele,s.value);if(!$('pop').hidden){const k=s.dataset.dele;if(k.startsWith('r:'))showReq(k.slice(2));}return true;}
 $('popBody').addEventListener('change',onDele);
+$('mBody').addEventListener('pointerdown',e=>{
+  const g=e.target.closest('.mt-n.drag');if(!g||mTab!=='sect')return;const svg=g.ownerSVGElement;
+  mtDrag={g,svg,id:+g.dataset.k.slice(2),p0:mtPt(svg,e),moved:false};try{g.setPointerCapture(e.pointerId);}catch(x){}
+});
+$('mBody').addEventListener('pointermove',e=>{
+  if(!mtDrag)return;const p=mtPt(mtDrag.svg,e);const dx=p[0]-mtDrag.p0[0],dy=p[1]-mtDrag.p0[1];
+  if(!mtDrag.moved&&Math.hypot(dx,dy)<6)return;mtDrag.moved=true;e.preventDefault();
+  mtDrag.g.setAttribute('transform','translate('+dx+','+dy+')');mtDrag.g.classList.add('dragging');
+  const t=mtTier(p[1]);const hl=mtDrag.svg.querySelector('.mt-hl');const ty=(MT_TIERS.find(x=>x[0]===t)||[0,-100])[1];
+  if(t<0)hl.setAttribute('height','0');else{hl.setAttribute('x',60);hl.setAttribute('y',ty-20);hl.setAttribute('width',480);hl.setAttribute('height',48);}
+});
+$('mBody').addEventListener('pointerup',e=>{
+  if(!mtDrag)return;const d=mtDrag;mtDrag=null;
+  if(!d.moved)return;mtDragEnd=Date.now();
+  const t=mtTier(mtPt(d.svg,e)[1]);let msg='';
+  if(t<0)msg='掌門嘅位唔可以放人。';else msg=moveRank(d.id,t)||'佢本身就喺呢一層。';
+  renderModal();$('mMsg').textContent=msg;toast(msg,3000);
+});
+$('mBody').addEventListener('pointercancel',()=>{if(mtDrag){mtDrag=null;renderModal();}});
 $('mBody').addEventListener('change',e=>{
   if(onDele(e))return;
   {const s=e.target.closest('[data-msadd]');if(s&&s.value){const x=MSN().active.find(y=>y.id===s.dataset.msadd);if(x){x.team.push(s.value==='dl'?'dl':+s.value);persist();renderAll();showMissions();}return;}}

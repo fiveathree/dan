@@ -55,11 +55,11 @@
 | 存檔 | `newPlayer() newSave() persist()`、舊等級換算（`gver`） |
 | 道德 | `moral() addMoral(n)`（回傳「，道德 ±n」字串，直接接落訊息）、`stance()` zheng／fan／wu、`wanted()`（≤ −50 通緝）、`moralTick()`、`fightWin(base, lv)` 打架勝算 |
 | 投胎 | `IDS` 出身、`P_APT` 玩家資質倍數同代價、`showBirth() applyBirth()`、`ready()`（未投胎、煉緊、死咗都唔准郁）、`cultMul()` |
-| 後代 | `KIDS() newKid(dl) showKid() kidAction()`（陪伴、家學、零用錢、書院、餵靈丹）`kidTick()` 親情 `kAff(k)`、`inherit(id)` |
+| 後代 | 子女入門 `kidJoin(id)`（弟子 `kidOf`、子女 `disc`）、`kidDisc(k)`；`KIDS() newKid(dl) showKid() kidAction()`（陪伴、家學、零用錢、書院、餵靈丹）`kidTick()` 親情 `kAff(k)`、`inherit(id)` |
 | 武學 | `mfx()` 匯總藏書 `mx`（按修煉階段乘 `WX_ST` 比例）：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox；進度 `WXP()`、`wxStage() wxTrain(id, base) trainWx(id)`，主修 `pl.wxMain` 打坐順便練 |
 | 委託 | 滿意度 `sat(o)`、`orderWoo(a,id)`（送禮、拜訪、送樣辦）、急單 `o.urgent`；`ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
 | 請求 | `REQS() newReq() reqTick() reqReady() showReq() doReq(id, yes)`；`pl.reqs: [{id, src:'npc'|'disc', ref, name, kind, g, n, left}]` |
-| 宗門大山 | `sectMountain()`：SVG 大山，掌門寶座喺頂，`rankOf()` 分層；撳人經 `hubKey()`；喺 `門派` leaf 最頂 |
+| 宗門大山 | 拖放：`.mt-n.drag` pointer 事件（`mtDrag`、`mtPt()`、`mtTier()`、`MT_TIERS`）→ `moveRank(id, r)`；`mtDragEnd` 避免拖完當撳；`sectMountain()`：SVG 大山，掌門寶座喺頂，`rankOf()` 分層；撳人經 `hubKey()`；喺 `門派` leaf 最頂 |
 | 宗門賞罰 | `sectReward(tier, force)`（靈石、藥材、書、延壽丹、`giveXianqi()` 仙器）、`sectPunish('late'|'jie')`、`sectLog()` 寫入 `car.log` |
 | 名聲 | `FM()`（`pl.fm={g 美名, b 臭名}`）、`addFame(g,b)` 回傳「，美名 +n」字串、`fameTick()` 排美名／臭名事件（`HOME_EV` 嘅 `fg*`、`fb*`）、影響 `capOf() innerCap()`、慕名、委託 |
 | 開宗地圖 | `LOCS`（x、y、res、comp、fx）、`locOf()`、`showMap()` `mapSvg()`、`createSect(name, loc)`；`car.loc`；踢館 `HOME_EV.rival`、`sectLvUp(msgs)` |
