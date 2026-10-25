@@ -28,11 +28,11 @@
 | 左面板 | `#pRecipe` | 丹道 `#paths`、心法 `#arts`、火種 `#fires`、火候 `#heat`、丹爐 `#furns`。`.g1`／`.g2` 用嚟喺手機分兩個分頁 |
 | 中 | `#stage` | `<canvas id="cv">` 爐火動畫、`#quests` 任務欄（`questList() renderQuests()`，手機縮做一粒掣）、`#log` 爐火紀錄、`#ov > #card` 疊層卡（出丹、結果、死亡、奇遇選擇） |
 | 人物 | 關係頁 `relGroups() renderRel()`：上半 org chart（`.org-row`），下半江湖分組卡片（家人、師門、朋友、仇敵、其他），撳 `[data-k]` 經 `onRelClick()` 分派；最頂「你」`data-k=me` → `showMe()`／`meSvg()` 打坐圖同裝備；電腦版頂部 `#openRel` 隱藏，用開爐格 `#dockRel` |
-| 中 | `#innerRow` | 六格（`renderInner()`）：`[data-cell=dl]` 道侶、`kid` 子女（`showKids()`）、`head` 親傳、`inner` 入室、`wai` 外門、`jm` 外門；手機只顯示名同人數 |
+| 中 | `#innerRow` | 六格（`renderInner()`）：`[data-cell=dl]` 道侶、`kid` 子女（`showKids()`）、`head` 親傳、`inner` 入室、`wai` 外門、`jm` 記名；手機只顯示名同人數 |
 | 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockRel`／`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
 | 主視窗 | `#modal` | 兩層導航：`#mSec` 六大區（`#ms_dan` `#ms_xiu` `#ms_ren` `#ms_zong` `#ms_chan` `#ms_ji`）、`#mSub` 子分頁（`#ml_<leaf>`）；`#mTitle #mBody`；秘咒 `#cheatIn` 只喺紀錄區顯示；訊息 `#mMsg` |
-| 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、外門管理 |
+| 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、記名管理 |
 | 提示 | `#toast` | `toast(msg, ms)` |
 
 手機斷點：`max-width:860px`（單欄、分頁）、`max-width:860px and max-height:720px`（矮機再壓縮）、`max-width:360px`。
@@ -59,6 +59,7 @@
 | 武學 | `mfx()` 匯總藏書 `mx`（按修煉階段乘 `WX_ST` 比例）：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox；進度 `WXP()`、`wxStage() wxTrain(id, base) trainWx(id)`，主修 `pl.wxMain` 打坐順便練 |
 | 委託 | 滿意度 `sat(o)`、`orderWoo(a,id)`（送禮、拜訪、送樣辦）、急單 `o.urgent`；`ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
 | 請求 | `REQS() newReq() reqTick() reqReady() showReq() doReq(id, yes)`；`pl.reqs: [{id, src:'npc'|'disc', ref, name, kind, g, n, left}]` |
+| 宗門大山 | `sectMountain()`：SVG 大山，掌門寶座喺頂，`rankOf()` 分層；撳人經 `hubKey()`；喺 `門派` leaf 最頂 |
 | 宗門賞罰 | `sectReward(tier, force)`（靈石、藥材、書、延壽丹、`giveXianqi()` 仙器）、`sectPunish('late'|'jie')`、`sectLog()` 寫入 `car.log` |
 | 名聲 | `FM()`（`pl.fm={g 美名, b 臭名}`）、`addFame(g,b)` 回傳「，美名 +n」字串、`fameTick()` 排美名／臭名事件（`HOME_EV` 嘅 `fg*`、`fb*`）、影響 `capOf() innerCap()`、慕名、委託 |
 | 開宗地圖 | `LOCS`（x、y、res、comp、fx）、`locOf()`、`showMap()` `mapSvg()`、`createSect(name, loc)`；`car.loc`；踢館 `HOME_EV.rival`、`sectLvUp(msgs)` |
@@ -127,7 +128,7 @@ save = {
     master: {name, sect, realm, aff, since, left}|null, npcs: [{id, key?, name, rel, note, aff, since, lv?}], evq: [家中奇遇 key],
     car: {skill, sxp, cert, aff /* null|xie|sect|own */, sect, sectName, lvl, pres,
           rank /* 0-4 */, gx /* 功勞 */, fail, log: [賞罰紀錄], tasks: [{kind, g, n, left, dz}], dabi, stasks: [{kind, who, last}],
-          members: [外門], inner: [入室], cands: [招募候選], visitors: [慕名求見], pity, head, nid},
+          members: [記名], inner: [入室], cands: [招募候選], visitors: [慕名求見], pity, head, nid},
     mo: {on, infamy, prisoners, caught, killed, last, nid},
     dl: 道侶|null, bag: {藥材id: 數量}, dr: {lvl, stacks, bottle, bagLv},
     n: {每世計數}, bio: [{a, t}], bt: {bioTrack 上次狀態}, ly: 上次 yearTick 年歲,
@@ -140,8 +141,9 @@ save = {
 
 - 舊存檔冇 `born`：載入時當佢係中等資質散修（`born:true, apt:1, id:'sanxiu'`）。新一世 `newPlayer()` 係 `born:false`，啟動時會彈 `showBirth()`。
 - 所有浮窗（`#modal>.mbox`、`.pbox`）固定同一大細 `min(940px,100%) × min(720px,100%)`，內容喺 `.mscroll`／`#popBody` 入面碌。
+- 弟子階級固定係 記名 → 外門 → 內門 → 入室 → 親傳（`RANKS`），五個名唔可以撞名；升降用 `upRank() downRank() canUp() canDown() rankUp() rankDown()`，掣上面一定寫下一級嘅名。
 - 唔好隨便改存檔 key。要改格式就加遷移（參考 `gver` 嘅等級換算），因為用戶部機有舊存檔。
-- 弟子物件：`{id, name, f, pers, skill, xp, realm, role, loy, gifts, fame?, apt?, age?, cult?, hao?, rk? /* 外門弟子階級 0-2 */, gx? /* 功勞 */}`；入室弟子一定有 `apt`、`age`、`cult`。
+- 弟子物件：`{id, name, f, pers, skill, xp, realm, role, loy, gifts, fame?, apt?, age?, cult?, hao?, rk? /* 記名弟子階級 0-2 */, gx? /* 功勞 */}`；入室弟子一定有 `apt`、`age`、`cult`。
 
 ## 設計
 
