@@ -24,14 +24,14 @@
 
 | 區域 | id／class | 說明 |
 |---|---|---|
-| 頂部 | `header.top`、`#stats`、`.hbtns` | 狀態列由 `renderStats()` 生成；掣：`#asc` 渡劫飛升（渡劫圓滿先顯示）、`#med` 打坐、`#task` 斬妖、`#herb` 採藥、`#grab` 擄人（魔頭先顯示）、`#openBook`、`#openShop`、`#openRel` 人物、`#openCar`、`#openAch` |
+| 頂部 | `header.top`、`#stats`、`.hbtns` | 狀態列由 `renderStats()` 生成（境界名 `#meBtn` 同 `h1` 撳落開 `showMe()`）；掣：`#asc` 渡劫飛升（渡劫圓滿先顯示）、`#med` 打坐、`#task` 斬妖、`#herb` 採藥、`#grab` 擄人（魔頭先顯示）、`#openBook`、`#openShop`、`#openRel` 人物、`#openCar`、`#openAch` |
 | 左面板 | `#pRecipe` | 丹道 `#paths`、心法 `#arts`、火種 `#fires`、火候 `#heat`、丹爐 `#furns`。`.g1`／`.g2` 用嚟喺手機分兩個分頁 |
 | 中 | `#stage` | `<canvas id="cv">` 爐火動畫、`#log` 爐火紀錄、`#ov > #card` 疊層卡（出丹、結果、死亡、奇遇選擇） |
 | 人物 | 關係圖中間「你」`data-k=me` → `showMe()`／`meSvg()` 打坐圖同裝備；電腦版頂部 `#openRel` 隱藏，用開爐格 `#dockRel` |
 | 中 | `#innerRow` | 三格：`[data-cell=dl]` 道侶、`[data-cell=inner]` 入室、`[data-cell=jm]` 記名 |
 | 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockRel`／`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
-| 大彈窗 | `#modal` | 分頁 `#mtBook #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtRel #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
+| 大彈窗 | `#modal` | 分頁 `#mtBook #mtWx（武學，`renderWx()`） #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtRel #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
 | 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、記名管理 |
 | 提示 | `#toast` | `toast(msg, ms)` |
 
@@ -58,6 +58,7 @@
 | 後代 | `KIDS() newKid(dl) showKid() kidAction() inherit(id)` |
 | 武學 | `mfx()` 匯總藏書 `mx`（按修煉階段乘 `WX_ST` 比例）：atk 戰力、dodge 身法、nei 修為%、xin 心魔減免%、herb、detox；進度 `WXP()`、`wxStage() wxTrain(id, base) trainWx(id)`，主修 `pl.wxMain` 打坐順便練 |
 | 委託 | `ORD() orderPool() newOrder() orderTick() huntHerbs() applyOrder() renderOrders() orderFor(p) showDeliver(id) deliverScore()` |
+| 宗門賞罰 | `sectReward(tier, force)`（靈石、藥材、書、延壽丹、`giveXianqi()` 仙器）、`sectPunish('late'|'jie')`、`sectLog()` 寫入 `car.log` |
 | 宗門階級 | `RANKS RANK_GX STIPEND UPKEEP`、`newSectTask() taskReady(t,ex) submitTask(ex) rankUps() sectTick()`（每年：月俸、俸祿、任務過期、大比、挖角）、`switchSect()`、自創宗門 `STASK() ownTaskTick() rankOf(m) promoGate(m)`、`renderSectTasks()`；大比／挖角係 `HOME_EV` 入面 `w:0` 嘅事件，用 `queueEv(k)` 排 |
 | 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()`；`askConfirm(問, 說明, 確定動作, id, 返轉頭動作)` 唔可以返轉頭嘅動作先彈窗問 |
 | 丹價行情 | `prices()` 行情指數、`retailPrice()`、`makeShopPill()` |
@@ -69,7 +70,7 @@
 | 生平 | `LN()` 每世計數、`bio()`、`bioTrack()`（喺 `afterAction` 比較前後狀態自動記大事）、`lifeRecord() renderLives()` |
 | 入室弟子 | `APT` 資質、`rollApt()` 抽籤連保底、`yearTick()`（每年：入室修煉壽元、忠誠、道侶、丹市、行情、丹室流失、慕名求見） |
 | 中間三格 | `renderInner() showInnerList() showJiming() showDLCell() showDisciple() showDraw() onPopClick()` |
-| 魔頭 | `MO()`、`becomeMo() reform() grab() moTick()`、牢房 |
+| 魔頭 | `MO()`、`becomeMo() reform() grab() massacre()`（屠村）`moTick()`（奴隸挖礦、放血、逃走、圍剿）、`sacrifice(id)`、`P_ROLES`、`PRISON_CAP=Infinity`；入魔時 `renderAll()` 喺 `<html>` 加 `.mo`（白骨主題 token）、改標題同斬妖掣；`xieN()` 丹協／魔協；藥材 `xuerou` 只有魔頭解鎖 |
 | 藏書與丹書 | `BOOKS`、`bookFx()`、`recipes() mastery()`、`previewRecipe()`、`applyRecipe()`、`recordBrew()`、`gradeFromQ() nameFor()`、商行藏書 |
 | 丹途 | `CERT SKILL_N SECTS SECT_LV PERS ROLES`、`C()`、`capOf() innerCap()`、`team()`（所有加成匯總）、`careerAfterBrew()`、考證、入會、開宗 |
 | 核心演算 | `analyse()` → `{Q, S, boom, ideal, dev, dom, flags, notes, mName, mCount…}`；`successRate()`、`yieldCount()` |
@@ -110,7 +111,7 @@ save = {
     realm /* 0 煉氣…8 渡劫、9 飛升 */, cult, tox, demon, age, lifeBonus, stones, alive,
     master: {name, sect, realm, aff, since, left}|null, npcs: [{id, key?, name, rel, note, aff, since, lv?}], evq: [家中奇遇 key],
     car: {skill, sxp, cert, aff /* null|xie|sect|own */, sect, sectName, lvl, pres,
-          rank /* 0-4 */, gx /* 功勞 */, fail, task: {kind, g, n, left}, dabi, stasks: [{kind, who, last}],
+          rank /* 0-4 */, gx /* 功勞 */, fail, log: [賞罰紀錄], task: {kind, g, n, left}, dabi, stasks: [{kind, who, last}],
           members: [記名], inner: [入室], cands: [招募候選], visitors: [慕名求見], pity, head, nid},
     mo: {on, infamy, prisoners, caught, killed, last, nid},
     dl: 道侶|null, bag: {藥材id: 數量}, dr: {lvl, stacks, bottle, bagLv},

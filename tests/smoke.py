@@ -51,11 +51,16 @@ with sync_playwright() as p:
 
     # 彈窗分頁大細一致
     boxes = set()
-    for t in ['mtBook', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtRel', 'mtCar']:
+    for t in ['mtBook', 'mtWx', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtRel', 'mtCar']:
         pg.click('#' + t)
         boxes.add(pg.eval_on_selector('#modal>.mbox', 'e=>{const r=e.getBoundingClientRect();return [r.top,r.height,r.width].map(Math.round).join(",")}'))
-    check(len(boxes) == 1, f'彈窗八個分頁大細一致 {boxes}')
+    check(len(boxes) == 1, f'彈窗九個分頁大細一致 {boxes}')
     pg.click('#mClose')
+
+    # 左上角撳自己
+    pg.click('#meBtn'); pg.wait_for_timeout(50)
+    check(pg.is_visible('.me-svg'), '撳左上角境界開到自己人物狀態')
+    pg.click('#popClose')
 
     # 打坐
     pg.click('#med'); pg.wait_for_timeout(50)
