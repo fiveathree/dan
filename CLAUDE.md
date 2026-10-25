@@ -24,13 +24,13 @@
 
 | 區域 | id／class | 說明 |
 |---|---|---|
-| 頂部 | `header.top`、`#stats`、`.hbtns` | 狀態列由 `renderStats()` 生成；掣：`#task` 斬妖、`#herb` 採藥、`#grab` 擄人（魔頭先顯示）、`#openBook`、`#openShop`、`#openCar`、`#openAch` |
+| 頂部 | `header.top`、`#stats`、`.hbtns` | 狀態列由 `renderStats()` 生成；掣：`#asc` 渡劫飛升（渡劫圓滿先顯示）、`#med` 打坐、`#task` 斬妖、`#herb` 採藥、`#grab` 擄人（魔頭先顯示）、`#openBook`、`#openShop`、`#openRel` 人物、`#openCar`、`#openAch` |
 | 左面板 | `#pRecipe` | 丹道 `#paths`、心法 `#arts`、火種 `#fires`、火候 `#heat`、丹爐 `#furns`。`.g1`／`.g2` 用嚟喺手機分兩個分頁 |
 | 中 | `#stage` | `<canvas id="cv">` 爐火動畫、`#log` 爐火紀錄、`#ov > #card` 疊層卡（出丹、結果、死亡、奇遇選擇） |
 | 中 | `#innerRow` | 三格：`[data-cell=dl]` 道侶、`[data-cell=inner]` 入室、`[data-cell=jm]` 記名 |
 | 中 | `.dock` | `#order` 投料、`#wxBar` 五行、`#yyNeedle` 陰陽、`#rate` 成功率、`#yield` 出丹、`#cost`、`#go` 開爐、`#dockShop`／`#dockRoom`／`#dockCar`／`#dockBook`（手機隱藏） |
 | 右面板 | `#pShelf` | `#shelf` 藥櫃、`#ingTip` |
-| 大彈窗 | `#modal` | 分頁 `#mtBook #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
+| 大彈窗 | `#modal` | 分頁 `#mtBook #mtShop #mtRoom #mtAch #mtCodex #mtLife #mtRel #mtCar`；內容 `#mTitle #mBody`；秘咒 `#cheatIn`；訊息 `#mMsg` |
 | 小彈窗 | `#pop` | `#popBody`；用嚟顯示弟子、抽籤、道侶、記名管理 |
 | 提示 | `#toast` | `toast(msg, ms)` |
 
@@ -45,6 +45,11 @@
 | 段落 | 內容 |
 |---|---|
 | 資料 | `EL GEN CTRL PATHS ARTS FIRES FURN ING REALMS LIFE GRADES NAMES SPECIAL ALL_PILLS` |
+| 境界、打坐、渡劫 | `TOP=8`（渡劫）、`realmName(r,cult)` 小境界、`breakthrough()`（所有加修為都要經佢，封頂渡劫圓滿）、`canAscend() ascendChance() showAscend()`、`meditate()`、`MED_EV`、`pickW()` |
+| 師傅 | `MS()`、`makeMaster() showMaster() masterAction()` |
+| 人物恩怨 | `NPCS() addNPC({key?,name,rel,note,lv?}) delNPC() showNPC() npcAction()`；`rel`：you 知己／chou 仇人／dui 對手／qdl 前道侶／pan 叛徒／qms 斷絕師徒 |
+| 家中奇遇 | `HOME_EV`（物件，`w`、`cond()`、`run(lines)`）、`queueHome()`（yearTick 每年 22%）、`flushEvents()`／`kickEvents()`：等冇彈窗先顯示 |
+| 人物關係圖 | `relNodes() renderRel() onRelClick()`，SVG |
 | 解鎖與成就 | `START`（開局解鎖）、`ACHS`（成就，`u` 欄係解鎖項目）、`checkAch()` |
 | 存檔 | `newPlayer() newSave() persist()`、舊等級換算（`gver`） |
 | 籠絡弟子 | 送靈石、送藥、傳功、大弟子 `headD()` |
@@ -72,11 +77,13 @@
 - **任何改變狀態嘅動作之後都要叫 `afterAction()`**：
 
   ```js
-  afterAction() = moTick(); yearTick(); bioTrack(); checkLife(); checkAch(); fixCfg(); persist(); renderAll();
+  afterAction() = moTick(); yearTick(); bioTrack(); checkLife(); checkAch(); fixCfg(); persist(); renderAll(); kickEvents();
   ```
 
 - **時間**：用 `P().age += 1` 代表過一年，之後叫 `afterAction()`。每年要做嘅嘢放喺 `yearTick()` 個 while 迴圈入面（用 `pl.ly` 計過咗幾多年）。
 - **加成**：所有弟子、門派、道侶、牢房嘅加成都匯總喺 `team()`，回傳 `{q, stab, disc, inc, pres, helpers, wild}`。藏書加成係 `bookFx()`，熟練度喺 `analyse()` 入面計。
+- **加修為**：一律用 `gainCult(n)`（內部叫 `breakthrough()`），唔好自己寫 `while(cult>=100)` 迴圈。境界最高自動去到 `TOP`（渡劫），飛升要經 `showAscend()` 將 `realm` 設做 9。
+- **家中奇遇**：`yearTick` 入隊，`flushEvents` 會等 `#ov`、`#pop`、`#modal` 全部閂咗先彈出。新增事件加入 `HOME_EV`。
 - **品級**：`gradeFromQ(Q, fire, furn)`，門檻係 Q＜15 廢丹、＜45 下品、＜80 中品、＜120 上品、其餘仙丹。
 - **手上丹藥**：`current = {name, kind, grade, gradeName, Q, path, dom, tox, yy, demon, art, desc, elHex, count}`。`kind` 係 normal／waste／raw／burnt／chicken／meng，失敗品見 `FAIL_KINDS`。用 `useOne()` 扣一粒。
 - **結果顯示**：用 `showOutcome(title, [[文字, 'good'|'bad']], fx)`；如果 `current` 仲有剩，會自動顯示「處理剩低」掣。
@@ -86,13 +93,14 @@
 
 ```js
 save = {
-  gver: 2, cheat, lives, shidi /* 累計試死，畀成就用 */,
+  gver: 2, rver: 2 /* 九境界遷移 */, npcId, cheat, lives, shidi /* 累計試死，畀成就用 */,
   codex: [丹名], ach: [成就id], st: {各種累計計數},
   books: [書id], recipes: {丹名: {cfg, src, g}}, mastery: {丹名: 次數},
   history: [前世紀錄], shop: {age, life, stock}, market: {丹名: 已賣量}, prices: {丹名: {i, prev}},
   dead?: {title, text, win},
   player: {                       // 每一世，轉世重置
-    realm, cult, tox, demon, age, lifeBonus, stones, alive,
+    realm /* 0 煉氣…8 渡劫、9 飛升 */, cult, tox, demon, age, lifeBonus, stones, alive,
+    master: {name, sect, realm, aff, since, left}|null, npcs: [{id, key?, name, rel, note, aff, since, lv?}], evq: [家中奇遇 key],
     car: {skill, sxp, cert, aff /* null|xie|sect|own */, sect, sectName, lvl, pres,
           members: [記名], inner: [入室], cands: [招募候選], visitors: [慕名求見], pity, head, nid},
     mo: {on, infamy, prisoners, caught, killed, last, nid},
@@ -132,6 +140,8 @@ python tests/smoke.py
 
 - **開局**：16 歲、600 靈石、煉氣期、壽元 120。
 - **賣丹**：參考價 `GRADE_BASE=[1,15,60,220,1200]`，再乘行情（0.5 至 1.8），飽和係 `1/(1+已賣量×0.12)`，每年已賣量 ×0.75。
+- **境界**：`REALMS` 十個（含飛升），`LIFE=[120,220,500,1000,2000,3500,5000,8000,12000,99999]`。食丹修為 ÷ `(1+境界×0.8)`。
+- **自然消退**：毒每年 −2、心魔每年 −1；打坐心魔 −10 至 −20、毒 −8。
 - **入室弟子修為**：每年 `(1.2+丹術×0.12) × 資質倍數 ÷ (1+境界×1.2)`，刻意慢過玩家。
 - **奇遇**：採藥 55%、斬妖 50% 機會觸發；致命機率大約每次出行 0.5% 至 1%。
 - **黑市事件**：埋伏 8%（＋惡名×0.3%），黑吃黑 7%，大客 6%，官差 5%。

@@ -43,11 +43,22 @@ with sync_playwright() as p:
 
     # 彈窗分頁大細一致
     boxes = set()
-    for t in ['mtBook', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtCar']:
+    for t in ['mtBook', 'mtShop', 'mtRoom', 'mtAch', 'mtCodex', 'mtLife', 'mtRel', 'mtCar']:
         pg.click('#' + t)
         boxes.add(pg.eval_on_selector('#modal>.mbox', 'e=>{const r=e.getBoundingClientRect();return [r.top,r.height,r.width].map(Math.round).join(",")}'))
-    check(len(boxes) == 1, f'彈窗七個分頁大細一致 {boxes}')
+    check(len(boxes) == 1, f'彈窗八個分頁大細一致 {boxes}')
     pg.click('#mClose')
+
+    # 打坐
+    pg.click('#med'); pg.wait_for_timeout(50)
+    check(pg.is_visible('#card'), '打坐有結果卡')
+    while pg.is_visible('#card [data-i]'):
+        pg.click('#card [data-i] >> nth=0')
+    if pg.is_visible('#aClose'):
+        pg.click('#aClose')
+    pg.wait_for_timeout(50)
+    while pg.is_visible('#card [data-i]') or pg.is_visible('#aClose'):
+        pg.click('#card [data-i] >> nth=0') if pg.is_visible('#card [data-i]') else pg.click('#aClose')
 
     # 開爐出丹
     pg.click('#go'); pg.wait_for_timeout(100)
