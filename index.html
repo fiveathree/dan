@@ -251,6 +251,8 @@ canvas{display:block;width:100%;height:100%}
 .mt-c{fill:#fff0d4;font-size:14px;text-anchor:middle;font-family:var(--display);pointer-events:none}
 .mt-t{fill:var(--paper);font-size:11px;text-anchor:middle;font-family:var(--body);pointer-events:none}
 .elog{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:13px}.elog li{display:flex;gap:8px;padding:3px 6px;border-bottom:1px solid var(--line)}.elog li.bg{background:rgba(201,161,90,.08)}.elog li.al{background:rgba(190,60,40,.14)}.elog .ea{color:var(--muted);min-width:4em;flex:none}.elog .et{color:var(--bronze);min-width:2.5em;flex:none}
+.yh-chain{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.yh-chain select{max-width:100%}
+@media(max-width:860px){.yh-chain{grid-template-columns:1fr 1fr}}
 .mt-n{cursor:pointer}.mt-zhen{fill:rgba(120,180,255,.06);stroke:#9fd0ff;stroke-width:2;pointer-events:none}.mt-n.drag{cursor:grab;touch-action:none}.mt-n.dragging{cursor:grabbing;opacity:.85}
 .mt-hl{fill:rgba(232,196,90,.14);stroke:#e8c45a;stroke-dasharray:6 4;pointer-events:none}
 .mt-tip{position:absolute;right:10px;bottom:6px;font-size:11px;color:#d9c9a8;text-shadow:0 1px 3px #000;max-width:60%;text-align:right;pointer-events:none}
@@ -1328,6 +1330,95 @@ function showAlerts(){
   return true;
 }
 
+/* ---------- 藥行：弟子管藥田 → 煉丹入丹室 → 藥行賣出，一條龍 ---------- */
+const YH_LV=[{n:'未開張',cap:0},{n:'小藥攤',cap:20,cost:2000},{n:'藥舖',cap:60,cost:8000},{n:'藥行',cap:150,cost:25000},{n:'百草堂',cap:400,cost:70000},{n:'萬藥樓',cap:1000,cost:180000},{n:'天下藥行',cap:2500,cost:450000}];
+const YH_PX={lo:{n:'平價',m:.85,c:1.5},mid:{n:'正價',m:1,c:1},hi:{n:'高價',m:1.3,c:.6}};
+function YH(){const pl=P();if(!pl.yh)pl.yh={lv:0,px:'mid',rec:'',off:{},last:null};return pl.yh;}
+function yhStaff(r){return allDisc().filter(m=>m.role===r&&!onMs(m));}
+function yhRec(){const Y=YH();const R=recipes()[Y.rec];return R&&!missingFor(R.cfg).length?R:null;}
+function yhCust(){const Y=YH();if(!Y.lv)return 0;return Math.round((YH_LV[Y.lv].cap+yhStaff('dian').reduce((a,m)=>a+(5+m.skill*4)*loyMult(m),0))*YH_PX[Y.px].c);}
+function yhSellable(){const Y=YH();return DR().stacks.filter(s=>!FAIL_KINDS.includes(s.kind)&&!Y.off[s.name]&&(MO().on||!isBlack(s)));}
+function yhHerb(){
+  const L=yhStaff('tian');if(!L.length)return 0;const R=yhRec();
+  let want=(R?R.cfg.order:cfg.order).filter(id=>isUnl('ing',id)&&ING[id]);
+  if(!want.length)want=Object.keys(ING).filter(id=>isUnl('ing',id)&&id!=='jitang'&&id!=='xuerou');
+  let got=0,i=0;L.forEach(m=>{const n=Math.round((3+m.skill)*(1+bdLv('tian')*.5)*loyMult(m));for(let j=0;j<n;j++)got+=bagAdd(want[i++%want.length],1);});
+  return got;
+}
+function yhBrew(){
+  const L=yhStaff('lian');const r={made:0,fail:0,spent:0,name:'',note:''};if(!L.length)return r;
+  const R=yhRec();const keep=JSON.stringify(cfg);
+  try{
+    if(R)Object.assign(cfg,JSON.parse(JSON.stringify(R.cfg)));
+    if(!cfg.order.length){r.note='未揀丹方';return r;}
+    let stop=false;
+    L.forEach(m=>{if(stop)return;const bt=1+Math.floor(m.skill/2);
+      for(let i=0;i<bt;i++){
+        const cost=costOf();if(P().stones<cost){r.note='靈石唔夠買藥';stop=true;break;}
+        if(roomCount()>=roomCap()){r.note='丹室滿咗';stop=true;break;}
+        const u=bagSplit().used;const b=bag();Object.keys(u).forEach(k=>{b[k]-=u[k];if(b[k]<=0)delete b[k];});P().stones-=cost;r.spent+=cost;
+        const a=analyse();a.Q*=.7+m.skill*.04;
+        if(rnd()*100>successRate(a)){r.fail++;continue;}
+        const pl=makePill(a,false);if(FAIL_KINDS.includes(pl.kind)){r.fail++;continue;}
+        const k=storePill(pl,1+Math.floor(m.skill/3));r.made+=k;r.name=pl.gradeName+pl.name;
+        if(!save.codex.includes(pl.name))save.codex.push(pl.name);
+      }
+      discSkillUp(m,3);});
+  }finally{Object.assign(cfg,JSON.parse(keep));}
+  return r;
+}
+function yhSell(){
+  const Y=YH();if(!Y.lv)return{sold:0,inc:0};let cap=yhCust();let sold=0,inc=0;const px=YH_PX[Y.px].m;
+  if(!yhStaff('dian').length)cap=Math.round(cap*.3);
+  yhSellable().sort((a,b)=>sellValue(b)-sellValue(a)).forEach(s=>{
+    if(cap<=0)return;const k=Math.min(s.count,cap);const v=Math.round(quoteN(s,k)*px);
+    market()[s.name]=(market()[s.name]||0)+k;s.count-=k;cap-=k;sold+=k;inc+=v;});
+  DR().stacks=DR().stacks.filter(s=>s.count>0);P().stones+=inc;save.st.earned=(save.st.earned||0)+inc;
+  return{sold,inc};
+}
+function yhTick(){
+  const herb=yhHerb();const br=yhBrew();const sl=yhSell();
+  if(herb)log('藥田','弟子今年種出 '+herb+' 份藥材','good');
+  else if(yhStaff('tian').length&&bagCount()>=bagCap())log('藥田','藥囊滿咗（'+bagCap()+' 份），種咗都放唔落，去「產業 › 器物」換大啲嘅儲物袋','bad');
+  if(br.made||br.fail)log('煉丹','弟子煉出 '+br.made+' 粒'+(br.name?br.name:'')+(br.fail?'，失手 '+br.fail+' 爐':'')+'，用咗 '+br.spent+' 靈石'+(br.note?'（'+br.note+'）':''),br.made?'good':'bad');
+  else if(br.note&&yhStaff('lian').length)log('煉丹','煉丹弟子今年冇得煉：'+br.note,'bad');
+  if(sl.sold)log('藥行',YH_LV[YH().lv].n+'今年賣出 '+sl.sold+' 粒丹，收入 '+sl.inc+' 靈石','good');
+  if(herb||br.made||br.fail||sl.sold||YH().lv)YH().last={a:P().age,herb,made:br.made,fail:br.fail,spent:br.spent,note:(!herb&&yhStaff('tian').length&&bagCount()>=bagCap()?'藥囊滿咗；':'')+br.note,sold:sl.sold,inc:sl.inc};
+}
+function yhAct(a,b){
+  const Y=YH();
+  if(a==='yhlv'){const nx=YH_LV[Y.lv+1];if(!nx)return'';if(P().stones<nx.cost)return'靈石唔夠，要 '+nx.cost+'。';P().stones-=nx.cost;Y.lv++;bio((Y.lv===1?'開張':'擴充成')+'「'+nx.n+'」');afterAction();return(Y.lv===1?'藥行開張':'擴充成「'+nx.n+'」')+'，每年基本客量 '+nx.cap+'。';}
+  if(a==='yhpx'){Y.px=b.dataset.k;persist();return'定價改做'+YH_PX[Y.px].n+'。';}
+  if(a==='yhoff'){const n=b.dataset.n;Y.off[n]=!Y.off[n];if(!Y.off[n])delete Y.off[n];persist();return n+(Y.off[n]?'落架，唔會賣。':'上架。');}
+  if(a==='yhout'){const m=allDisc().find(x=>x.id===+b.dataset.id);if(m){m.role='idle';persist();return m.name+'調返做閒置。';}}
+  return null;
+}
+function renderYh(){
+  const Y=YH();const R=yhRec();const nx=YH_LV[Y.lv+1];
+  const recs=Object.entries(recipes()).filter(([n,e])=>!missingFor(e.cfg).length).sort((a,b)=>b[1].g-a[1].g);
+  const free=r=>allDisc().filter(m=>m.role!==r&&!onMs(m));
+  const staff=(r,t)=>{const L=yhStaff(r);return'<div class="chips">'+(L.length?L.map(m=>'<button class="chip" type="button" data-a="yhout" data-id="'+m.id+'" aria-pressed="true" title="撳一下調走">'+m.name+' · '+SKILL_N[m.skill]+' ✕</button>').join(''):'<span class="desc">未有人</span>')+'</div>'+
+    (free(r).length?'<select data-yhadd="'+r+'" aria-label="派人去'+t+'"><option value="">＋ 派人…</option>'+free(r).map(m=>'<option value="'+m.id+'">'+m.name+'（'+ROLES[m.role].n+'，丹術'+SKILL_N[m.skill]+'）</option>').join('')+'</select>':'');};
+  const tl=yhStaff('tian'),ll=yhStaff('lian');
+  const herbN=tl.reduce((a,m)=>a+Math.round((3+m.skill)*(1+bdLv('tian')*.5)*loyMult(m)),0);
+  const brewN=ll.reduce((a,m)=>a+(1+Math.floor(m.skill/2))*(1+Math.floor(m.skill/3)),0);
+  const stock=yhSellable().reduce((a,s)=>a+s.count,0);
+  let h='<div class="yh-chain">'+
+    '<div class="mem"><div class="mem-h"><b>① 藥田</b><span class="tag">'+tl.length+' 人</span></div><div class="desc">每年約 '+herbN+' 份藥材入藥囊'+(bdLv('tian')?'（靈田 '+bdLv('tian')+' 級加成）':'')+'；優先種丹方要嘅藥。藥囊 '+bagCount()+' / '+bagCap()+'</div>'+staff('tian','藥田')+'</div>'+
+    '<div class="mem"><div class="mem-h"><b>② 煉丹</b><span class="tag">'+ll.length+' 人</span></div><div class="desc">每年最多約 '+brewN+' 粒，用藥囊嘅藥，唔夠就用靈石買。</div>'+
+      '<select data-yhrec aria-label="煉丹弟子用邊條丹方"><option value="">（跟你爐上嘅配方）</option>'+recs.map(([n,e])=>'<option value="'+n+'"'+(Y.rec===n?' selected':'')+'>'+n+'（'+GRADES[e.g]+'）</option>').join('')+'</select>'+staff('lian','煉丹')+'</div>'+
+    '<div class="mem"><div class="mem-h"><b>③ 丹室</b><span class="tag">'+roomCount()+' / '+roomCap()+'</span></div><div class="desc">上架可賣 '+stock+' 粒。撳丹名揀上唔上架：</div><div class="chips">'+
+      (DR().stacks.filter(s=>!FAIL_KINDS.includes(s.kind)).map(s=>s.name).filter((n,i,a)=>a.indexOf(n)===i).map(n=>'<button class="chip" type="button" data-a="yhoff" data-n="'+n+'" aria-pressed="'+!Y.off[n]+'">'+n+'</button>').join('')||'<span class="desc">丹室冇丹</span>')+'</div></div>'+
+    '<div class="mem"><div class="mem-h"><b>④ 藥行</b><span class="tag">'+YH_LV[Y.lv].n+'</span></div>'+
+      (Y.lv?'<div class="desc">每年客量約 '+yhCust()+' 粒'+(yhStaff('dian').length?'':'（冇人睇舖，只得三成）')+'</div><div class="chips">'+Object.entries(YH_PX).map(([k,o])=>'<button class="chip" type="button" data-a="yhpx" data-k="'+k+'" aria-pressed="'+(Y.px===k)+'">'+o.n+'</button>').join('')+'</div>'+staff('dian','藥行'):'<div class="desc">未開張。開咗先可以每年自動賣丹。</div>')+
+      (nx?'<div class="car-act"><button class="btn" type="button" data-a="yhlv"'+(P().stones<nx.cost?' disabled':'')+'>'+(Y.lv?'擴充做「'+nx.n+'」':'開張「'+nx.n+'」')+'（'+nx.cost+'）</button></div>':'<span class="tag good">已經最大</span>')+'</div></div>';
+  const L=Y.last;
+  h+='<div class="label" style="margin-top:8px">'+(L?L.a+' 歲結算':'未結算過')+'<em>每年自動做：藥田種藥 → 煉丹入丹室 → 藥行賣丹</em></div>'+
+    (L?'<div class="desc">種藥 '+L.herb+' 份 → 煉出 '+L.made+' 粒'+(L.fail?'（失手 '+L.fail+' 爐）':'')+'，藥錢 '+L.spent+(L.note?'（'+L.note+'）':'')+' → 賣出 '+L.sold+' 粒，收入 <b>'+L.inc+'</b> 靈石。</div>':'<div class="desc">派弟子去三個崗位，開張藥行，過一年就有結果。丹室擴建同儲物袋喺「產業 › 丹室／器物」。</div>')+
+    '<div class="desc">定價：平價客多（×1.5）但每粒平一成半；高價每粒貴三成但客少四成。賣得多，丹市飽和，價錢會跌。'+(MO().on?'':'魔道同毒道嘅丹唔會擺出嚟賣。')+'</div>';
+  return h;
+}
+
 /* ---------- 散財：宗門建設、行善功德、拍賣會、秘境、外交、洗髓、護道 ---------- */
 const BUILD={
   dan:{n:'丹房',base:1500,d:'每級丹品 +4、丹爐穩定 +2；每兩級每爐多出一粒丹',fx:l=>'丹品 +'+l*4+'、穩定 +'+l*2+'、出丹 +'+Math.floor(l/2)},
@@ -1533,6 +1624,7 @@ function onSpendClick(e){
   else if(a==='mj'){t=goMj(b.dataset.k);if(!P().alive)return;}
   else if(a==='mjpick'){const id=+b.dataset.id;if(mjSel.includes(id))mjSel=mjSel.filter(x=>x!==id);else if(mjSel.length<3)mjSel.push(id);else t='最多帶三個。';renderModal();}
   else if(a==='gift'||a==='gift2')t=gift(b.dataset.k,a==='gift2');
+  else if(a.startsWith('yh')){t=yhAct(a,b);if(t===null)return;renderAll();}
   else return;
   if(t!==null){renderModal();$('mMsg').textContent=t;if(t)toast(t,3000);}
 }
@@ -2043,9 +2135,9 @@ function makeShopPill(name,g){
     desc:'商行買返嚟嘅'+GRADES[g]+name+'，用紅紙包住，封口仲有商行嘅印。',elHex:EL[inf.dom].hex,count:1};
 }
 /* ---------- 丹室、丹瓶、儲物袋 ---------- */
-const ROOM_LV=[{n:'丹櫃',cap:10,cost:0},{n:'丹格',cap:25,cost:400},{n:'丹室',cap:50,cost:1200},{n:'丹閣',cap:100,cost:3000},{n:'丹庫',cap:200,cost:8000}];
+const ROOM_LV=[{n:'丹櫃',cap:10,cost:0},{n:'丹格',cap:25,cost:400},{n:'丹室',cap:50,cost:1200},{n:'丹閣',cap:100,cost:3000},{n:'丹庫',cap:200,cost:8000},{n:'丹樓',cap:500,cost:20000},{n:'丹塔',cap:1500,cost:60000},{n:'丹宮',cap:4000,cost:150000},{n:'丹殿',cap:10000,cost:400000}];
 const BOTTLES=[{n:'冇丹瓶',loss:.06,d:'丹藥每年流失 6% 藥力'},{n:'瓷瓶',p:200,loss:.03,d:'每年只流失 3% 藥力'},{n:'玉瓶',p:1200,loss:0,d:'藥力唔再流失'},{n:'紫金瓶',p:5000,loss:-.02,d:'溫養丹藥，藥力每年 +2%'}];
-const BAGS=[{n:'粗布藥囊',cap:20,extra:0,guard:0,d:'藥囊最多放 20 份藥材'},{n:'儲物袋',p:300,cap:50,extra:1,guard:0,d:'藥囊 50 份，採藥多 1 份'},{n:'乾坤袋',p:1500,cap:120,extra:2,guard:.5,d:'藥囊 120 份，採藥多 2 份，被搶、被圍剿、中伏損失減半'},{n:'須彌袋',p:6000,cap:300,extra:3,guard:.5,d:'藥囊 300 份，採藥多 3 份，損失減半'}];
+const BAGS=[{n:'粗布藥囊',cap:20,extra:0,guard:0,d:'藥囊最多放 20 份藥材'},{n:'儲物袋',p:300,cap:50,extra:1,guard:0,d:'藥囊 50 份，採藥多 1 份'},{n:'乾坤袋',p:1500,cap:120,extra:2,guard:.5,d:'藥囊 120 份，採藥多 2 份，被搶、被圍剿、中伏損失減半'},{n:'須彌袋',p:6000,cap:300,extra:3,guard:.5,d:'藥囊 300 份，採藥多 3 份，損失減半'},{n:'芥子袋',p:20000,cap:800,extra:4,guard:.6,d:'藥囊 800 份，採藥多 4 份，損失少六成'},{n:'洞天袋',p:60000,cap:2000,extra:5,guard:.7,d:'藥囊 2000 份，採藥多 5 份，損失少七成'},{n:'小千世界',p:150000,cap:5000,extra:6,guard:.8,d:'藥囊 5000 份，採藥多 6 份，損失少八成'}];
 const WEAPONS=[{n:'赤手空拳',atk:0,d:'冇兵器'},{n:'鐵劍',p:300,atk:8,d:'戰力 +8'},{n:'青鋼劍',p:1200,atk:18,d:'戰力 +18'},{n:'紫電劍',p:4000,atk:30,d:'戰力 +30'},{n:'誅仙劍',p:12000,atk:50,d:'戰力 +50'}];
 const ARMORS=[{n:'粗布衣',def:0,d:'冇防具'},{n:'皮甲',p:300,def:8,d:'防禦 +8'},{n:'玄鐵甲',p:1200,def:16,d:'防禦 +16'},{n:'天蠶寶衣',p:4000,def:26,d:'防禦 +26'},{n:'金縷玉衣',p:12000,def:40,d:'防禦 +40'}];
 function DR(){const pl=P();if(!pl.dr)pl.dr={lvl:0,stacks:[],bottle:0,bagLv:0};if(pl.dr.wpn===undefined){pl.dr.wpn=0;pl.dr.arm=0;}return pl.dr;}
@@ -2119,13 +2211,17 @@ function renderGear(){
     return'<div class="mem"><div class="mem-h"><b>'+label+'：'+cur.n+'</b></div><div class="desc">'+cur.d+'</div>'+(nx?'<button class="btn wrap" type="button" data-a="gear" data-k="'+kind+'"'+(P().stones<Math.round(nx.p*(MO().on?1.5:1))?' disabled':'')+'>換'+nx.n+'（'+Math.round(nx.p*(MO().on?1.5:1))+' 靈石）：'+nx.d+'</button>':'<span class="desc">已經係最好</span>')+'</div>';};
   return'<div class="label" style="margin-top:8px">器物<em>兵器加戰力；防具加防禦（打架勝算更高、被妖獸偷襲傷得少啲）</em></div><div class="mems">'+row(BOTTLES,'bottle','bottle','丹瓶')+row(BAGS,'bagLv','bag','儲物袋')+row(WEAPONS,'wpn','wpn','兵器')+row(ARMORS,'arm','arm','防具')+'</div>';
 }
-const ROOM_SLOTS=[6,10,16,24,32];
+const ROOM_SLOTS=[6,10,16,24,32,36,40,44,48];
 const ROOM_SKIN=[
   {wall:'#2a1d14',wood:'#5e4126',d:'屋角一個舊木櫃'},
   {wall:'#2c2017',wood:'#6f4b2b',d:'一排排木格'},
   {wall:'#261b1f',wood:'#7d522d',lamp:1,d:'有燈有窗嘅丹室'},
   {wall:'#201a28',wood:'#8b5c2c',lamp:1,trim:'#c9a15a',d:'雕樑畫棟嘅丹閣'},
-  {wall:'#1d1810',wood:'#b8893a',lamp:1,trim:'#ffd36b',d:'金碧輝煌嘅丹庫'}];
+  {wall:'#1d1810',wood:'#b8893a',lamp:1,trim:'#ffd36b',d:'金碧輝煌嘅丹庫'},
+  {wall:'#1a1d22',wood:'#9a6a34',lamp:1,trim:'#e8c45a',d:'三層高嘅丹樓'},
+  {wall:'#17202a',wood:'#a8763a',lamp:1,trim:'#9fd0ff',d:'直插雲霄嘅丹塔'},
+  {wall:'#22141a',wood:'#c08a3e',lamp:1,trim:'#ff9a6b',d:'仙氣繚繞嘅丹宮'},
+  {wall:'#1c1408',wood:'#d4a24a',lamp:1,trim:'#fff0a8',d:'萬丹朝宗嘅丹殿'}];
 const BOTTLE_SKIN=[{body:'#cdb38a',cap:'#8a6a3a',edge:'#7a5a32',shape:'pack'},{body:'#ece7dc',cap:'#5d86ad',edge:'#a8a296',shape:'vase'},{body:'#7fc4a0',cap:'#3f7a5c',edge:'#3f7a5c',shape:'vase'},{body:'#8b5bcc',cap:'#e8c45a',edge:'#e8c45a',shape:'gourd'}];
 const GRADE_COL=['#7a7470','#c9b48a','#74b89c','#62a9d6','#e8a83a'];
 let roomSel=-1;
@@ -2775,7 +2871,7 @@ function yearTick(){
       if(d.realm>=TOP)d.cult=Math.min(d.cult,100);
       if(d.age>=innerLife(d)){c.inner=inner().filter(x=>x!==d);save.st.oldAge=(save.st.oldAge||0)+1;LN().oldAge++;bio('入室弟子'+d.name+'壽終坐化');msgs.push('入室弟子'+d.name+'壽元耗盡，安詳坐化，享年 '+d.age+' 歲');}
     });
-    spendTick(msgs);daiBrew();deleTick();missionTick();discYear();jobTick();loyTick(msgs);dlTick(msgs);marketDecay();priceTick();roomDecay(msgs);
+    spendTick(msgs);daiBrew();yhTick();deleTick();missionTick();discYear();jobTick();loyTick(msgs);dlTick(msgs);marketDecay();priceTick();roomDecay(msgs);
     pl.tox=Math.max(0,pl.tox-2);pl.demon=Math.max(0,pl.demon-1);
     if(pl.alive&&rnd()<.22)queueHome();
     if(!c.visitors)c.visitors=[];
@@ -3473,7 +3569,7 @@ const PERS={
   tan:{n:'貪財',d:'營運賺得多，但間中袋袋平安',q:1,s:1,g:1,inc:1.6},
   qi:{n:'好奇',d:'助爐時有驚喜亦有驚嚇',q:1,s:1,g:1.2,wild:true}
 };
-const ROLES={zhu:{n:'助爐',d:'幫手煉丹，提升丹品同穩定（最多兩個生效）'},cai:{n:'採藥',d:'藥材減價'},ying:{n:'營運',d:'每爐帶來靈石收入'},chuan:{n:'傳功',d:'教其他弟子，自創門派時加聲望'},idle:{n:'閒置',d:'乜都唔做'}};
+const ROLES={zhu:{n:'助爐',d:'幫手煉丹，提升丹品同穩定（最多兩個生效）'},cai:{n:'採藥',d:'藥材減價'},ying:{n:'營運',d:'每爐帶來靈石收入'},chuan:{n:'傳功',d:'教其他弟子，自創門派時加聲望'},tian:{n:'管藥田',d:'每年種出藥材入藥囊（優先種藥行丹方要嘅藥）'},lian:{n:'煉丹',d:'每年用藥行指定嘅丹方煉丹，放入丹室'},dian:{n:'藥行',d:'喺藥行睇舖，將丹室嘅丹賣出去'},idle:{n:'閒置',d:'乜都唔做'}};
 const SURN='林張陳李王蘇葉白柳雲秦沈趙何方韓';
 const GIVEN=[['清風',0],['明月',1],['靈兒',1],['鐵柱',0],['二狗',0],['若水',1],['不凡',0],['子軒',0],['婉兒',1],['大頭',0],['小翠',1],['阿福',0],['紫煙',1],['無忌',0],['寶珠',1],['石頭',0]];
 function newCareer(){return{skill:0,sxp:0,cert:0,aff:null,sect:null,sectName:'',lvl:0,pres:0,members:[],cands:[],nid:1};}
@@ -4188,7 +4284,7 @@ const SECS=[
   {k:'xiu',n:'修行',leaves:[['me','自己'],['wx','武學'],['shan','行善'],['mj','秘境'],['life','前世']]},
   {k:'ren',n:'人物',leaves:[['people','人物']]},
   {k:'zong',n:'宗門',leaves:[['car','身份'],['sect','門派'],['build','建設'],['wj','外交'],['pr','奴隸營']]},
-  {k:'chan',n:'產業',leaves:[['mkt','丹市'],['auc','拍賣'],['bshop','書店'],['gear','器物'],['room','丹室']]},
+  {k:'chan',n:'產業',leaves:[['mkt','丹市'],['yh','藥行'],['auc','拍賣'],['bshop','書店'],['gear','器物'],['room','丹室']]},
   {k:'ji',n:'紀錄',leaves:[['elog','事件'],['ach','成就'],['set','秘咒同設定']]}];
 const TAB_ALIAS={shop:'mkt',rel:'people',codex:'book'};
 let mTab='ach';let lastTab=null;const secLast={};
@@ -4215,6 +4311,7 @@ function renderModal(){
   else if(t==='mj'){T('秘境','你有 '+P().stones+' 靈石');$('mBody').innerHTML=renderMj();}
   else if(t==='build'){T('宗門建設','你有 '+P().stones+' 靈石');$('mBody').innerHTML=renderBuild();}
   else if(t==='wj'){T('外交','你有 '+P().stones+' 靈石');$('mBody').innerHTML=renderWj();}
+  else if(t==='yh'){T('藥行',YH_LV[YH().lv].n+'　你有 '+P().stones+' 靈石');$('mBody').innerHTML=renderYh();}
   else if(t==='auc'){T('拍賣會','你有 '+P().stones+' 靈石');$('mBody').innerHTML=renderAuc();}
   else if(t==='people'){hubShow(hubCat,hubSel);}
   else if(t==='car'){T('身份',titleOf());renderCareer();}
@@ -4253,7 +4350,7 @@ $('openXiu').onclick=()=>openTab(secLast.xiu||'me');
 $('mBody').addEventListener('click',e=>{
   const t=mTab;
   if(e.target.closest('[data-a="gobuild"]')){openTab('build');return;}
-  if(['shan','mj','build','wj','auc'].includes(t)){onSpendClick(e);return;}
+  if(['shan','mj','build','wj','auc','yh'].includes(t)){onSpendClick(e);return;}
   if(t==='elog'){const b=e.target.closest('[data-ef]');if(b){elogF=b.dataset.ef;renderModal();}return;}
   if(t==='people'){onPopClick(e);return;}
   if(t==='car'||t==='sect'||t==='pr')onCareerClick(e);
@@ -4283,6 +4380,8 @@ $('mBody').addEventListener('pointerup',e=>{
 $('mBody').addEventListener('pointercancel',()=>{if(mtDrag){mtDrag=null;renderModal();}});
 $('mBody').addEventListener('change',e=>{
   if(onDele(e))return;
+  {const s=e.target.closest('[data-yhadd]');if(s&&s.value){const m=allDisc().find(x=>x.id===+s.value);if(m){m.role=s.dataset.yhadd;persist();renderAll();$('mMsg').textContent=m.name+'改做「'+ROLES[m.role].n+'」。';}return;}}
+  if(e.target.matches('[data-yhrec]')){YH().rec=e.target.value;persist();renderAll();$('mMsg').textContent=e.target.value?'煉丹弟子之後會煉「'+e.target.value+'」。':'煉丹弟子跟你爐上嘅配方。';return;}
   {const s=e.target.closest('[data-msadd]');if(s&&s.value){const x=MSN().active.find(y=>y.id===s.dataset.msadd);if(x){x.team.push(s.value==='dl'?'dl':+s.value);persist();renderAll();showMissions();}return;}}
   if(e.target.id==='sectSel'){$('sectDesc').textContent=SECTS[e.target.value].d;return;}
   const s=e.target.closest('[data-tsk]');if(!s||mTab!=='car')return;
@@ -4317,6 +4416,7 @@ function cheat(){
   else if(v==='魔女知己'){const n=addNPC({name:'冷霜',rel:'you',note:'你救過佢一命嘅女魔頭',mo:1,dk:'mo',vis:3,aff:75});afterAction();$('mMsg').textContent='你多咗個女魔頭知己'+n.name+'（已拜訪三次），喺「人物」撳佢可以結為道侶、論道或者殺佢。';}
   else if(v==='壽元將盡'){const pl=P();pl.cult=0;pl.age=pl.ly=lifespan()-1;MO().last=pl.age;afterAction();$('mMsg').textContent='你只剩一年壽元，做多一件事就會坐化。';}
   else if(v==='親傳失蹤'){const h=headD();if(!h){$('mMsg').textContent='你未有親傳弟子（可以先用「桃李天下」）。';}else{const c=C();c.inner=inner().filter(x=>x!==h);c.head=null;log('弟子',h.name+'下山採藥之後音訊全無','bad');afterAction();$('mMsg').textContent='你嘅親傳弟子'+h.name+'失蹤咗。';}}
+  else if(v==='一條龍'){const Y=YH();Y.lv=Math.max(Y.lv,3);const r=Object.entries(recipes()).find(([n,e])=>!missingFor(e.cfg).length);if(r)Y.rec=r[0];const D=allDisc().filter(m=>!onMs(m));['tian','lian','dian'].forEach((k,i)=>{if(D[i])D[i].role=k;});persist();renderAll();$('mMsg').textContent='藥行升到「藥行」級'+(r?'，丹方揀咗「'+r[0]+'」':'')+'，'+Math.min(3,D.length)+' 個弟子分咗去藥田、煉丹、藥行。過一年睇「產業 › 藥行」。';}
   else if(v==='富可敵國'){P().stones+=100000;persist();renderAll();$('mMsg').textContent='袋入面多咗 100000 靈石，可以去起建築、拍賣、行善。';}
   else if(v==='功德無量'){save.gd=GD()+500;persist();renderAll();$('mMsg').textContent='功德 +500，下一世投胎可以換福報。';}
   else if(v==='拍賣開鎚'){newAuction();persist();renderAll();$('mMsg').textContent='萬寶樓即刻開一場拍賣會，喺「產業 › 拍賣」睇。';}

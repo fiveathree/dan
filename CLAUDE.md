@@ -94,6 +94,7 @@
 | 生死 | `checkLife() endLife() showDeath()`、轉世 |
 | 散財 | 宗門建設 `BUILD BD() bdLv(k) bdCost() build() bdSvg()`（`car.bd`，`sectMountain` 畫建築同大陣光罩，`data-a=gobuild` 跳去建設頁）；行善 `CHAR CS() charity()`（`pl.cs` 今世次數），功德 `save.gd`（跨世），福報 `FUBAO`，投胎 `birthSel.fb`；拍賣 `AUC() newAuction() aucBid() aucGive() lotGive()`（`pl.auc`，每三年）；突破輔助 `pl.tc` 天材地寶、`pl.hu` 護法、`pl.hj` 護劫法陣、`aidBonus()`；靈獸 `pl.pet`；洗髓 `xisui(id) XS_COST`；秘境 `MJ goMj() mjSel`；外交 `DIP() allies() foeSect() shield(k) gift()`（`car.dip`）；每年 `spendTick()`；頁面 click 經 `onSpendClick()` |
 | 事件紀錄 | `elog(t,msg,cls)`（`log()`、`bio()`、yearTick 訊息都會寫入 `pl.evlog`，最多 300 條）、`renderElog()`；重大事件 `watchRoster()`（`afterAction` 入面比較 `pl.rs` 名單）→ `pl.alerts` → `showAlerts()` 彈窗（`flushEvents` 都會試） |
+| 藥行 | `YH()`（`pl.yh={lv, px, rec, off, last}`）、`YH_LV YH_PX`、弟子工作 `tian` 管藥田／`lian` 煉丹／`dian` 藥行（喺 `ROLES`）、`yhStaff(r) yhRec() yhCust() yhSellable()`；每年 `yhTick()` = `yhHerb()`→`yhBrew()`（暫時套丹方 cfg，用完還原）→`yhSell()`；頁面 `renderYh()`、`yhAct()`，下拉 `data-yhadd`／`data-yhrec` 喺 `#mBody` change |
 | 一鍵送靈石 | `GIFT_CAT giftTargets() giftBar() giftAll()`，`hubPop` 自動喺分類頁頂加掣 |
 | 導航 | `SECS`（區同子分頁 leaf）、`mTab`＝而家 leaf、`secLast` 記住每區上次分頁、`TAB_ALIAS`（舊名 shop→mkt、rel→people、codex→book）、`drawNav() renderModal() openTab(leaf)`；`#mBody` click 按 leaf 分派（people→`onPopClick`、car/sect/pr→`onCareerClick`、book/wx→`onBookClick`、產業→`onBookClick`+`onRoomClick`）；人物中心 `hubPop()` 直接畫入主視窗 |
 
@@ -164,7 +165,7 @@ python tests/smoke.py
 ```
 
 - `tests/smoke.py` 會檢查（導航用 `#ms_<區>`、`#ml_<leaf>`）：冇 JS 錯誤；電腦同手機一屏過；新存檔彈投胎；所有彈窗分頁大細一樣；丹途門派冇秘咒欄；打坐、開爐出丹；秘咒有效。新存檔一定要先撳 `#bGo` 入世先玩得。
-- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣 江湖告急 富可敵國 功德無量 拍賣開鎚 大興土木 天材地寶 親傳失蹤`（喺 `cheat()`）。
+- 測試用秘咒：`急急如律令 點石成金 丹道通神 走火入魔 天劫將至 大仁大義 大奸大惡 有求必應 開枝散葉 魔女知己 壽元將盡 武學大成 拜入山門 宗門大比 五年大比 有人挖角 有事相求 桃李天下 修為圓滿 名滿天下 臭名遠播 踢館 天賜良緣 江湖告急 富可敵國 功德無量 拍賣開鎚 大興土木 天材地寶 親傳失蹤 一條龍`（喺 `cheat()`）。
 - 測試小技巧：加 `page.add_init_script("window.setTimeout=(f,t)=>Promise.resolve().then(f)")` 可以跳過煉丹動畫，即刻出結果。
 - 改完 JS 先用 node 做語法檢查：
 
